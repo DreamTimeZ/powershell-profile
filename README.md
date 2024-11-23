@@ -5,14 +5,16 @@
 1. [Preview](#preview)
 2. [Overview](#overview)
 3. [Features](#features)
-4. [Installation](#installation)
-    - [What the Installation Does](#what-the-installation-does)
-    - [Installation Scripts](#installation-scripts)
-        - [bat Files](#bat-files)
-        - [ps1 Files](#ps1-files)
+4. [Installation Guide](#installation-guide)
+   - [What the Scripts Do](#what-the-scripts-do)
+   - [PowerShell Profile Location](#powershell-profile-location)
+   - [How to Use the Scripts](#how-to-use-the-scripts)
+     - [`.bat` Files (Windows Batch Scripts)](#bat-files-windows-batch-scripts)
+     - [`.ps1` Files (PowerShell Scripts)](#ps1-files-powershell-scripts)
+   - [Finalizing the Installation](#finalizing-the-installation)
 5. [Usage](#usage)
-    - [Aliases](#aliases)
-    - [Functions](#functions)
+   - [Aliases](#aliases)
+   - [Functions](#functions)
 6. [Uninstallation](#uninstallation)
 
 ## Preview
@@ -40,45 +42,73 @@ A collection of PowerShell functions and aliases for enhanced productivity.
 
 ---
 
-## Installation
+## Installation Guide
 
-### What the Installation Does
+### What the Scripts Do
 
-1. **Dependencies**: Installs required packages using the Windows Package Manager (`winget`).
-2. **Themes**: Clones the [terminal-themes](https://github.com/DreamTimeZ/terminal-themes) repository into your `Documents` folder under the directory `TerminalThemes`.
-3. **Profile Setup**: Copies the PowerShell profile file to the appropriate location as specified by the `$PROFILE.CurrentUserCurrentHost` variable (configured in the `install.ps1` script).
+The provided installation and uninstallation scripts perform the following tasks:
 
-### Profile Location Details
+1. **Install Dependencies**: Ensures essential tools (`fzf`, `zoxide`, `eza`, etc.) are installed using the Windows Package Manager (`winget`).
+2. **Set Up Themes**: Clones the [terminal-themes](https://github.com/DreamTimeZ/terminal-themes) repository into your `Documents` folder under `TerminalThemes` for an enhanced terminal aesthetic.
+3. **Configure Profile**: Copies the PowerShell profile script to the appropriate location defined by `$PROFILE.CurrentUserCurrentHost`. This ensures the profile is automatically loaded for new terminal sessions.
 
-- The profile is installed to the location specified by `$PROFILE.CurrentUserCurrentHost`.
-- If you are running the script in a `pwsh` terminal, the profile path for `pwsh` will be used.
-- To view all profile locations, run the following command:
+---
+
+### PowerShell Profile Location
+
+The installation scripts automatically detect and configure the correct profile path:
+
+- **Location**: The profile is saved to the path specified by `$PROFILE.CurrentUserCurrentHost`.
+- **Terminal Compatibility**: Supports both Windows PowerShell and PowerShell Core (`pwsh`). Run `install.ps1` in the pwsh to install it for the pwsh terminal. The scripts handle compatibility automatically.
+- **Manual Check**: To verify or inspect all profile locations, run:
+  - You set another profile file location on the top of the `install.ps1`.
+
+  ```powershell
+  $PROFILE | Select-Object *
+  ```
+
+---
+
+### How to Use the Scripts
+
+#### `.bat` Files (Windows Batch Scripts)
+
+- **Installation**: Double-click `install.bat` to install the profile and dependencies.
+- **Uninstallation**: Double-click `uninstall.bat` to remove the profile and its associated setup.
+- **Note**: `.bat` scripts start a Windows PowerShell subprocess and cannot directly run in the `pwsh` terminal. To use it in the `pwsh` terminal, edit the `.bat` file and replace `powershell` with `pwsh`.
+
+#### `.ps1` Files (PowerShell Scripts)
+
+- **Installation**:
+  - Run the script in `PowerShell` or `pwsh`:
 
     ```powershell
-    $PROFILE | Select-Object *
+    .\install.ps1
     ```
 
-### Installation Scripts
+- **Uninstallation**:
+  - Run the uninstallation script:
 
-You can use the provided scripts to quickly install or uninstall the profile:
+    ```powershell
+    .\uninstall.ps1
+    ```
 
-#### bat Files
+- **Alternative**:
+  - Right-click the `.ps1` file and select "Run with PowerShell."
 
-- Double-click the `.bat` files to run the installation (`install.bat`) or uninstallation (`uninstall.bat`).
-- **Note**: `.bat` scripts cannot be executed inside a `pwsh` terminal because they start a new PowerShell subprocess. To use them in `pwsh`, edit the `.bat` files and replace `powershell` with `pwsh`.
+---
 
-#### ps1 Files
+### Finalizing the Installation
 
-- Run the `.ps1` scripts (e.g., `install.ps1` or `uninstall.ps1`) in either Windows PowerShell or `pwsh`.
-- Alternatively, right-click the `.ps1` file and select "Run with PowerShell.
+After running the installation script, apply the changes by:
 
-#### After Running the Script to make it work
+1. **Manually Activating the Profile**:
 
-```powershell
-& $PROFILE
-```
+   ```powershell
+   & $PROFILE
+   ```
 
-- Or restart the terminal
+2. **Restarting Your Terminal**: The profile will load automatically in future sessions.
 
 ## Usage
 
