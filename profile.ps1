@@ -1,10 +1,7 @@
 # Clear the console screen
 [System.Console]::Clear()
 
-$startTime = Get-Date
-
 # Remove conflicting aliases and set custom ones
-
 Remove-Item -Path Alias:ls -ErrorAction Ignore
 Remove-Item -Path Alias:cd -ErrorAction Ignore
 
@@ -12,6 +9,67 @@ Set-Alias -Name vi -Value "$env:programfiles\Neovim\bin\nvim.exe"
 Set-Alias -Name touch -Value New-Item
 Set-Alias -Name cd -Value z
 Set-Alias -Name cdi -Value zi
+
+if (Get-Command git -ErrorAction SilentlyContinue) {
+
+    function ga     { git add .; git status }
+    function gs     { git status @args }
+    function gst    { git stash @args }
+    function gstp   { git stash pop @args }
+    function grmc   { git rm --cached @args }
+    function grao   { git remote add origin @args }
+    function gi     { git init @args }
+    function gsw    { git switch @args }
+    function gswc   { git switch -c @args }
+    function gb     { git branch @args }
+    function gbd    { git branch -d @args }
+    function gbD    { git branch -D @args }
+    function gbrd   { git push origin --delete @args }
+    function gco    { git commit @args }
+    function gca    { git commit --amend @args }
+    function gcqundo { git reset --soft HEAD~1 @args }
+    function gpl    { git pull @args }
+    function gpush  { git push @args }
+    function gpsf   { git push --force-with-lease @args }
+    function glg    { git log --oneline --graph --decorate --all @args }
+    function glog   { git log --oneline --decorate @args }
+    function ghist  { git log --pretty=format:"%h %ad | %s%d [%an]" --graph --date=short @args }
+    function gdf    { git diff @args }
+    function gdc    { git diff --cached @args }
+    function grs    { git restore . @args }
+    function grss   { git restore --staged . @args }
+    function grb    { git rebase @args }
+    function grbi   { git rebase -i @args }
+    function gcl    { git clone @args }
+    function gfa    { git fetch --all --prune @args }
+    function glast  { git log -1 HEAD @args }
+    function gtags  { git tag -l @args }
+    function gtagd  { git tag -d @args }
+}
+
+if (Get-Command poetry -ErrorAction SilentlyContinue) {
+
+    function pi      { poetry install @args }
+    function pu      { poetry update @args }
+    function plock   { poetry lock @args }
+    function pa      { poetry add @args }
+    function pad     { poetry add --dev @args }
+    function prm     { poetry remove @args }
+    function prun    { poetry run @args }
+    function prp     { poetry run python @args }
+    function prt     { poetry run task @args }
+    function ptest   { poetry run pytest @args }
+    function pblack  { poetry run black . @args }
+    function pisort  { poetry run isort . @args }
+    function pmypy   { poetry run mypy . @args }
+    function pvenv   { poetry env use python @args }
+    function pvi     { poetry env info @args }
+    function pshow   { poetry show @args }
+    function ptree   { poetry show --tree @args }
+    function poutdated { poetry show --outdated @args }
+    function pch     { poetry check @args }
+    function pbuild  { poetry build @args }
+}
 
 # Change directory using fzf to select a folder
 function cdf {
@@ -275,22 +333,6 @@ function ls { eza $args }
 # Open Notepad or files in Notepad
 function n { notepad $args }
 
-$startTimeTheme = Get-Date
-
 oh-my-posh init pwsh --config "$([Environment]::GetFolderPath('MyDocuments'))\TerminalThemes\oh-my-posh-theme.json" | Invoke-Expression
-
-$endTime = Get-Date
-$executionTime = $endTime - $startTime
-$executionTimeTheme = $endTime - $startTimeTheme
-
-if ($executionTime.TotalSeconds -gt 1) {
-    if ($executionTimeTheme.TotalSeconds -gt 1) {
-        Write-Host "Terminal startup time: $($executionTime.TotalSeconds) s (Theme: $($executionTimeTheme.TotalSeconds) s)"
-    } else {
-        Write-Host "Terminal startup time: $($executionTime.TotalSeconds) s (Theme: $($executionTimeTheme.Milliseconds) ms)"
-    }
-} else {
-    Write-Host "Terminal startup time: $($executionTime.Milliseconds) ms (Theme: $($executionTimeTheme.Milliseconds) ms)"
-}
 
 Invoke-Expression (& { (zoxide init powershell | Out-String) })
