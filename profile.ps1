@@ -9,6 +9,17 @@
 
 $startTime = Get-Date
 
+# Cache command existence checks for performance (single PATH search)
+$availableCommands = (Get-Command eza, git, poetry, zoxide, docker, ollama -ErrorAction SilentlyContinue).Name -replace '\.exe$', ''
+$Commands = @{
+    Eza     = 'eza' -in $availableCommands
+    Git     = 'git' -in $availableCommands
+    Poetry  = 'poetry' -in $availableCommands
+    Zoxide  = 'zoxide' -in $availableCommands
+    Docker  = 'docker' -in $availableCommands
+    Ollama  = 'ollama' -in $availableCommands
+}
+
 #==================================================================================================
 # BASIC ALIASES
 #==================================================================================================
@@ -25,7 +36,7 @@ Set-Alias -Name cdi -Value zi
 #--------------------------------------------------------------------------------------------------
 # EZA (Modern ls replacement)
 #--------------------------------------------------------------------------------------------------
-if (Get-Command eza -ErrorAction SilentlyContinue) {
+if ($Commands.Eza) {
     function ls  { eza --color=auto --group-directories-first $args }
     function la  { eza -a --color=always --group-directories-first --icons $args }
     function ll  { eza -l --color=always --group-directories-first --icons $args }
@@ -38,7 +49,7 @@ if (Get-Command eza -ErrorAction SilentlyContinue) {
 #--------------------------------------------------------------------------------------------------
 # GIT ALIASES
 #--------------------------------------------------------------------------------------------------
-if (Get-Command git -ErrorAction SilentlyContinue) {
+if ($Commands.Git) {
     # Status & Information
     function gs { git status $args }
     function gdf { git diff }
@@ -97,7 +108,7 @@ function .... { Set-Location ../../.. }
 #--------------------------------------------------------------------------------------------------
 # POETRY (Python dependency management)
 #--------------------------------------------------------------------------------------------------
-if (Get-Command poetry -ErrorAction SilentlyContinue) {
+if ($Commands.Poetry) {
     # Package Management
     function pi      { poetry install @args }
     function pu      { poetry update @args }
@@ -134,7 +145,7 @@ if (Get-Command poetry -ErrorAction SilentlyContinue) {
 #--------------------------------------------------------------------------------------------------
 # ZOXIDE (Smart directory navigation)
 #--------------------------------------------------------------------------------------------------
-if (Get-Command zoxide -ErrorAction SilentlyContinue) {
+if ($Commands.Zoxide) {
     function cdi { zoxide query --interactive }
     function cdf {
         $dest = zoxide query --interactive
@@ -145,7 +156,7 @@ if (Get-Command zoxide -ErrorAction SilentlyContinue) {
 #--------------------------------------------------------------------------------------------------
 # DOCKER
 #--------------------------------------------------------------------------------------------------
-if (Get-Command docker -ErrorAction SilentlyContinue) {
+if ($Commands.Docker) {
     Set-Alias d docker
     function dps { docker ps $args }
     function di { docker images $args }
@@ -165,7 +176,7 @@ function dockerd { & "$env:programfiles\Docker\Docker\Docker Desktop.exe" $args}
 #--------------------------------------------------------------------------------------------------
 # OLLAMA (Local LLM management)
 #--------------------------------------------------------------------------------------------------
-if (Get-Command ollama -ErrorAction SilentlyContinue) {
+if ($Commands.Ollama) {
     function ollama-up {
         if (-not (Get-Process ollama -ErrorAction SilentlyContinue)) {
             Start-Process -WindowStyle Hidden -FilePath ollama -ArgumentList 'serve'
@@ -193,11 +204,15 @@ function reload-path {
 # Search text in a pipeline or input for a pattern
 function grep {
     param (
-        [Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)] [string[]] $Input,
-        [Parameter(Position = 0, Mandatory = $true)] [string] $Pattern
+        [Parameter(ValueFromPipeline = $true)]
+        [string[]] $InputObject,
+        [Parameter(Position = 0, Mandatory = $true)]
+        [string] $Pattern
     )
     process {
-        $Input | Out-String -Stream | Select-String -Pattern $Pattern
+        if ($InputObject) {
+            $InputObject | Select-String -Pattern $Pattern
+        }
     }
 }
 
@@ -472,26 +487,32 @@ function gcmd {
 $startTimeTheme = Get-Date
 
 # Oh My Posh - Prompt theme engine
-oh-my-posh init pwsh --config "$([Environment]::GetFolderPath('MyDocuments'))\TerminalThemes\oh-my-posh-theme.json" | Invoke-Expression
+# oh-my-posh init pwsh --config "$([Environment]::GetFolderPath('MyDocuments'))\TerminalThemes\oh-my-posh-theme.json" | Invoke-Expression
+
+# Starship - Alternative prompt theme (cached for performance)
+$ENV:STARSHIP_CONFIG = "$([Environment]::GetFolderPath('MyDocuments'))\TerminalThemes\starship-theme.toml"
+$starshipCache = "$env:TEMP\starship-init-$($PSVersionTable.PSVersion.Major).ps1"
+if (-not (Test-Path $starshipCache)) {
+    & starship init powershell | Out-File $starshipCache -Encoding utf8
+}
+. $starshipCache
+function Invoke-Starship-TransientFunction {
+  &starship module character # Show "λ" for previous commands
+}
+Enable-TransientPrompt  # Simplify previous prompts to save screen space
 
 $endTime = Get-Date
-$executionTime = $endTime - $startTime
-$executionTimeTheme = $endTime - $startTimeTheme
+$totalMs = ($endTime - $startTime).TotalMilliseconds
+$themeMs = ($endTime - $startTimeTheme).TotalMilliseconds
 
-if ($executionTime.TotalSeconds -gt 1) {
-    if ($executionTimeTheme.TotalSeconds -gt 1) {
-        Write-Host "Terminal startup time: $($executionTime.TotalSeconds) s (Theme: $($executionTimeTheme.TotalSeconds) s)"
-    } else {
-        Write-Host "Terminal startup time: $($executionTime.TotalSeconds) s (Theme: $($executionTimeTheme.Milliseconds) ms)"
-    }
-} else {
-    Write-Host "Terminal startup time: $($executionTime.Milliseconds) ms (Theme: $($executionTimeTheme.Milliseconds) ms)"
+$totalDisplay = if ($totalMs -ge 1000) { "{0:F2} s" -f ($totalMs / 1000) } else { "{0:F0} ms" -f $totalMs }
+$themeDisplay = if ($themeMs -ge 1000) { "{0:F2} s" -f ($themeMs / 1000) } else { "{0:F0} ms" -f $themeMs }
+
+Write-Host "Terminal startup time: $totalDisplay (Theme: $themeDisplay)"
+
+# Zoxide - Smart directory jumper initialization (cached for performance)
+$zoxideCache = "$env:TEMP\zoxide-init-$($PSVersionTable.PSVersion.Major).ps1"
+if (-not (Test-Path $zoxideCache)) {
+    & zoxide init powershell | Out-File $zoxideCache -Encoding utf8
 }
-
-
-# Zoxide - Smart directory jumper initialization
-Invoke-Expression (& { (zoxide init powershell | Out-String) })
-
-if (Get-Module -ListAvailable -Name Microsoft.WinGet.CommandNotFound) {
-    Import-Module -Name Microsoft.WinGet.CommandNotFound
-}
+. $zoxideCache
