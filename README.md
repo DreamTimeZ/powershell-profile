@@ -1,142 +1,166 @@
 # PowerShell Profile
 
-## Table of Content
+## Table of Contents
 
 1. [Preview](#preview)
 2. [Overview](#overview)
 3. [Features](#features)
-4. [Installation Guide](#installation-guide)
-   - [What the Scripts Do](#what-the-scripts-do)
-   - [PowerShell Profile Location](#powershell-profile-location)
-   - [How to Use the Scripts](#how-to-use-the-scripts)
-     - [`.bat` Files (Windows Batch Scripts)](#bat-files-windows-batch-scripts)
-     - [`.ps1` Files (PowerShell Scripts)](#ps1-files-powershell-scripts)
-   - [Finalizing the Installation](#finalizing-the-installation)
+4. [Installation](#installation)
 5. [Usage](#usage)
-   - [Aliases](#aliases)
-   - [Functions](#functions)
 6. [Uninstallation](#uninstallation)
 
 ## Preview
 
 ![Preview](preview.png)
 
-A demonstration of the customized PowerShell, pwsh terminal in action, featuring aliases and themed appearance.
-
 ## Overview
 
-This repository provides my `PowerShell` and `pwsh` profile designed to enhance your terminal experience. The included scripts make it quick and easy to set up the profile along with necessary dependencies and themes.
-
-A collection of PowerShell functions and aliases for enhanced productivity.
+A customized PowerShell profile for both Windows PowerShell and PowerShell Core (pwsh) with enhanced productivity features, modern tools integration, and themed appearance. Installation scripts automatically handle dependencies and configuration using symbolic links for seamless updates.
 
 ## Features
 
-- Custom aliases (`vi`, `cd`, `touch`, etc.)
-- Fuzzy directory navigation with `fzf`
-- Text search (`grep`)
-- System management (shutdown, reboot, process kill)
-- IP address discovery (IPv4/IPv6)
-- Package management (`winget`)
-- Command history and search
-- System uptime display
+### Tool Integration
+- **EZA**: Modern `ls` replacement with icons and color
+- **Zoxide**: Smart directory navigation (`cd`, `cdi`)
+- **Oh My Posh**: Customizable prompt themes
+- **Git**: Comprehensive git aliases and shortcuts
+- **Poetry**: Python dependency management shortcuts
+- **Docker**: Container management aliases
 
----
+### Custom Functions
+- **Navigation**: `..`, `...`, `....` for quick directory traversal
+- **System Management**: `poweroff`, `reboot`, `pkill`
+- **Network**: `IPv4`, `IPv6` - Get local/public IPs or domain resolution
+- **Package Management**: `update` - Bulk update via winget
+- **Utilities**: `grep`, `uptime`, `hist`, `gcmd`, `reload`
 
-## Installation Guide
+### Application Launchers
+- Neovim, Notepad, Obsidian, Firefox, Docker Desktop, Ollama
 
-### What the Scripts Do
+## Installation
 
-The provided installation and uninstallation scripts perform the following tasks:
+### Quick Start
 
-1. **Install Dependencies**: Ensures essential tools (`fzf`, `zoxide`, `eza`, etc.) are installed using the Windows Package Manager (`winget`).
-2. **Set Up Themes**: Clones the [terminal-themes](https://github.com/DreamTimeZ/terminal-themes) repository into your `Documents` folder under `TerminalThemes` for an enhanced terminal aesthetic.
-3. **Configure Profile**: Copies the PowerShell profile script to the appropriate location defined by `$PROFILE.CurrentUserCurrentHost`. This ensures the profile is automatically loaded for new terminal sessions.
+```powershell
+.\install.ps1
+```
 
----
+**What it does:**
+1. Installs dependencies via winget (eza, zoxide, Oh My Posh, Neovim, Git, fzf)
+2. Clones [terminal-themes](https://github.com/DreamTimeZ/terminal-themes) to `~/Documents/TerminalThemes`
+3. Creates a symbolic link to the profile (requires UAC elevation)
 
-### PowerShell Profile Location
+Restart your terminal or run `& $PROFILE` to activate.
 
-The installation scripts automatically detect and configure the correct profile path:
+### Configuration Options
 
-- **Location**: The profile is saved to the path specified by `$PROFILE.CurrentUserCurrentHost`.
-- **Terminal Compatibility**: Supports both Windows PowerShell and PowerShell Core (`pwsh`). Run `install.ps1` in the pwsh to install it for the pwsh terminal. The scripts handle compatibility automatically.
-- **Manual Check**: To verify or inspect all profile locations, run:
-  - You set another profile file location on the top of the `install.ps1`.
+**Profile Scope:**
+```powershell
+.\install.ps1 -Profile current      # Current user, current host (default)
+.\install.ps1 -Profile all-hosts    # Current user, all PowerShell hosts
+.\install.ps1 -Profile all-users    # All users, current host (requires admin)
+.\install.ps1 -Profile global       # All users, all hosts (requires admin)
+```
 
-  ```powershell
-  $PROFILE | Select-Object *
-  ```
+**Shell Target:**
+```powershell
+.\install.ps1 -Shell current        # Current shell only (default)
+.\install.ps1 -Shell windows        # Windows PowerShell only
+.\install.ps1 -Shell pwsh           # PowerShell 7+ only
+.\install.ps1 -Shell both           # Both shells
+```
 
----
-
-### How to Use the Scripts
-
-#### `.bat` Files (Windows Batch Scripts)
-
-- **Installation**: Double-click `install.bat` to install the profile and dependencies.
-- **Uninstallation**: Double-click `uninstall.bat` to remove the profile and its associated setup.
-- **Note**: `.bat` scripts start a Windows PowerShell subprocess and cannot directly run in the `pwsh` terminal. To use it in the `pwsh` terminal, edit the `.bat` file and replace `powershell` with `pwsh`.
-
-#### `.ps1` Files (PowerShell Scripts)
-
-- **Installation**:
-  - Run the script in `PowerShell` or `pwsh`:
-
-    ```powershell
-    .\install.ps1
-    ```
-
-- **Uninstallation**:
-  - Run the uninstallation script:
-
-    ```powershell
-    .\uninstall.ps1
-    ```
-
-- **Alternative**:
-  - Right-click the `.ps1` file and select "Run with PowerShell."
-
----
-
-### Finalizing the Installation
-
-After running the installation script, apply the changes by:
-
-1. **Manually Activating the Profile**:
-
-   ```powershell
-   & $PROFILE
-   ```
-
-2. **Restarting Your Terminal**: The profile will load automatically in future sessions.
+**Examples:**
+```powershell
+.\install.ps1 -Profile current -Shell both
+.\install.ps1 -Profile all-hosts -Shell pwsh
+Get-Help .\install.ps1 -Detailed
+```
 
 ## Usage
 
-### Aliases
+### File & Directory Operations
+```powershell
+ls                    # List files with eza
+la                    # List all files with icons
+ll                    # Long listing with icons
+lla                   # Long listing including hidden
+tree                  # Tree view (2 levels)
+touch file.txt        # Create new file
+cd project            # Smart jump with zoxide
+cdi                   # Interactive directory picker
+..                    # Go up one directory
+...                   # Go up two directories
+```
 
-- `vi`: Open Neovim
-- `touch`: Create a new file
-- `cd`: Use `zoxide`
-- `ls`: File listing (`eza`)
+### Git Shortcuts
+```powershell
+gs                    # git status
+ga                    # git add . && git status
+gcom "message"        # git commit -m
+gpsh                  # git push
+gpl                   # git pull
+gsw branch            # git switch
+gswc new-branch       # git switch -c (create new)
+glg                   # git log graph
+gdf                   # git diff
+```
 
-### Functions
+### Python (Poetry)
+```powershell
+pi                    # poetry install
+pa package            # poetry add
+prun                  # poetry run
+prp script.py         # poetry run python
+ptest                 # poetry run pytest
+```
 
-- `cdf`: Change directory using `fzf`
-- `grep`: Search text (pipeline/input)
-- `pkill`: Kill a process by name
-- `poweroff`: Shutdown system
-- `reboot`: Reboot system
-- `IPv4`/`IPv6`: Get local/public IPs or domain IP
-- `update`: Update packages via `winget`
-- `uptime`: Show system uptime
-- `hist`: Display command history
-- `gcmd`: Search commands
-- `n`: Open files in Notepad
+### System & Network
+```powershell
+IPv4                  # Show local & public IPv4
+IPv6                  # Show local & public IPv6
+IPv4 -d google.com    # Resolve domain to IPv4
+update                # Update all winget packages
+uptime                # System uptime
+pkill processname     # Kill process by name
+poweroff              # Shutdown
+reboot                # Restart
+```
+
+### Docker
+```powershell
+d                     # docker
+dps                   # docker ps
+di                    # docker images
+dex container bash    # docker exec -it
+```
+
+### Utilities
+```powershell
+reload                # Reload profile
+hist                  # Full command history
+gcmd keyword          # Search for commands
+grep pattern          # Search in pipeline
+n file.txt            # Open in Notepad
+vi file.txt           # Open in Neovim
+```
 
 ## Uninstallation
 
-Follow the same process as installation, using the corresponding `uninstall.bat` or `uninstall.ps1` scripts.
+```powershell
+.\uninstall.ps1
+```
+
+Use the same `-Profile` and `-Shell` parameters from installation:
+
+```powershell
+.\uninstall.ps1 -Profile current -Shell both
+.\uninstall.ps1 -Profile all-hosts -Shell pwsh
+Get-Help .\uninstall.ps1 -Detailed
+```
+
+The script prompts to remove packages, themes, and profile symlinks.
 
 ---
 
-Feel free to raise issues or contribute to this project!
+**Questions or contributions?** Feel free to raise issues or submit pull requests!

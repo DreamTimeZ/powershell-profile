@@ -1,4 +1,53 @@
-$profilePath = $PROFILE.CurrentUserCurrentHost
+<#
+.SYNOPSIS
+    Uninstall PowerShell profile, dependencies, and themes.
+
+.PARAMETER Profile
+    Profile scope to remove:
+    - current (default): Current user, current host
+    - all-hosts: Current user, all hosts
+    - all-users: All users, current host
+    - global: All users, all hosts
+
+.PARAMETER Shell
+    Target shell: current (default) | windows | pwsh | both
+
+.EXAMPLE
+    .\uninstall.ps1
+    .\uninstall.ps1 -Profile all-hosts -Shell both
+    .\uninstall.ps1 -Shell pwsh
+#>
+
+param(
+    [ValidateSet('current', 'all-hosts', 'all-users', 'global')]
+    [string]$Profile = 'current',
+
+    [ValidateSet('current', 'windows', 'pwsh', 'both')]
+    [string]$Shell = 'current'
+)
+
+# Detect current shell
+$currentShell = if ($PSVersionTable.PSVersion.Major -ge 6) { 'pwsh' } else { 'windows' }
+
+# Map friendly names to PowerShell profile properties
+$profileMap = @{
+    'current'    = 'CurrentUserCurrentHost'
+    'all-hosts'  = 'CurrentUserAllHosts'
+    'all-users'  = 'AllUsersCurrentHost'
+    'global'     = 'AllUsersAllHosts'
+}
+
+# Determine which shells to target
+$targetShells = @()
+if ($Shell -eq 'current') {
+    $targetShells += $currentShell
+} elseif ($Shell -eq 'both') {
+    $targetShells += @('windows', 'pwsh')
+} else {
+    $targetShells += $Shell
+}
+
+$profileScope = $profileMap[$Profile]
 $requiredPolicy = "RemoteSigned"
 $repoName = "TerminalThemes"
 $packages = @("junegunn.fzf", "Neovim.Neovim", "ajeetdsouza.zoxide", "JanDeDobbeleer.OhMyPosh", "eza-community.eza", "Git.Git")
@@ -64,22 +113,62 @@ function Uninstall-PackageIfInstalled {
     }
 }
 
-# Removes the PowerShell profile file if it exists
+# Get profile path for specific shell and scope
+function Get-ProfilePath {
+    param (
+        [Parameter(Mandatory = $true)][string]$shell,
+        [Parameter(Mandatory = $true)][string]$scope
+    )
+
+    $documentsPath = [Environment]::GetFolderPath('MyDocuments')
+    $shellDir = if ($shell -eq 'pwsh') { 'PowerShell' } else { 'WindowsPowerShell' }
+
+    $profileName = switch ($scope) {
+        'CurrentUserCurrentHost' { 'Microsoft.PowerShell_profile.ps1' }
+        'CurrentUserAllHosts'    { 'profile.ps1' }
+        'AllUsersCurrentHost'    {
+            $programFiles = [Environment]::GetFolderPath('ProgramFiles')
+            return Join-Path -Path $programFiles -ChildPath "$shellDir\Microsoft.PowerShell_profile.ps1"
+        }
+        'AllUsersAllHosts'       {
+            $programFiles = [Environment]::GetFolderPath('ProgramFiles')
+            return Join-Path -Path $programFiles -ChildPath "$shellDir\profile.ps1"
+        }
+    }
+
+    if ($scope -like 'CurrentUser*') {
+        return Join-Path -Path $documentsPath -ChildPath "$shellDir\$profileName"
+    }
+
+    return $profileName
+}
+
+# Removes the PowerShell profile file or symbolic link if it exists
 function Remove-ProfileFile {
     param (
-        [Parameter(Mandatory = $true)][string]$profilePath
+        [Parameter(Mandatory = $true)][string]$profilePath,
+        [Parameter(Mandatory = $true)][string]$shellName
     )
 
     if (Test-Path -Path $profilePath) {
         try {
-            Write-Output "Removing PowerShell profile file at $profilePath..."
-            Remove-Item -Path $profilePath -Force -ErrorAction Stop
-            Write-Output "PowerShell profile file removed successfully."
+            $item = Get-Item -Path $profilePath
+            $isSymlink = $item.Attributes -band [System.IO.FileAttributes]::ReparsePoint
+
+            if ($isSymlink) {
+                Write-Output "[$shellName] Removing profile symbolic link..."
+                Remove-Item -Path $profilePath -Force -ErrorAction Stop
+                Write-Output "[$shellName] Profile symbolic link removed successfully."
+            } else {
+                Write-Output "[$shellName] Removing profile file..."
+                Remove-Item -Path $profilePath -Force -ErrorAction Stop
+                Write-Output "[$shellName] Profile file removed successfully."
+            }
         } catch {
-            Write-Error "Error removing PowerShell profile file: $_"
+            Write-Error "[$shellName] Error removing profile: $_"
         }
     } else {
-        Write-Output "PowerShell profile file does not exist. Skipping..."
+        Write-Output "[$shellName] Profile does not exist at $profilePath. Skipping..."
     }
 }
 
@@ -133,6 +222,11 @@ function Invoke-Uninstallation {
 }
 
 try {
+    Write-Host "=== PowerShell Profile Uninstallation ===`n"
+    Write-Host "Running from:    $currentShell"
+    Write-Host "Target shell(s): $($targetShells -join ', ')"
+    Write-Host "Profile scope:   $profileScope ($Profile)`n"
+
     Set-ExecutionPolicyIfNeeded
 
     Invoke-Uninstallation -packages $packages
@@ -144,14 +238,21 @@ try {
         Write-Output "Skipping Git repository removal as per user request."
     }
 
-    $response = Read-Host "Do you want to remove the PowerShell profile file? (y/n)"
+    $response = Read-Host "Do you want to remove the PowerShell profile(s)? (y/n)"
     if ($response -in @('y', 'Y')) {
-        Remove-ProfileFile -profilePath $profilePath
+        Write-Host "`n=== Removing Profile Symbolic Links ===`n"
+        foreach ($targetShell in $targetShells) {
+            $targetProfilePath = Get-ProfilePath -shell $targetShell -scope $profileScope
+            $shellDisplayName = if ($targetShell -eq 'pwsh') { 'PowerShell 7+' } else { 'Windows PowerShell' }
+
+            Write-Host "Processing $shellDisplayName..."
+            Remove-ProfileFile -profilePath $targetProfilePath -shellName $shellDisplayName
+        }
     } else {
-        Write-Output "Skipping PowerShell profile file removal as per user request."
+        Write-Output "Skipping PowerShell profile removal as per user request."
     }
 
-    Write-Output "Uninstallation process completed successfully."
+    Write-Output "`nUninstallation process completed successfully."
 } catch {
     Write-Error "An unexpected error occurred during the uninstallation process. Error: $_"
     exit 1
