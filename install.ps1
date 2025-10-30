@@ -1,4 +1,54 @@
-$profilePath = $PROFILE.CurrentUserCurrentHost
+<#
+.SYNOPSIS
+    Install PowerShell profile with dependencies and themes via symbolic links.
+
+.PARAMETER Profile
+    Profile scope:
+    - current (default): Current user, current host
+    - all-hosts: Current user, all hosts
+    - all-users: All users, current host (requires admin)
+    - global: All users, all hosts (requires admin)
+
+.PARAMETER Shell
+    Target shell: current (default) | windows | pwsh | both
+
+.EXAMPLE
+    .\install.ps1
+    .\install.ps1 -Profile all-hosts -Shell both
+    .\install.ps1 -Shell pwsh
+#>
+
+param(
+    [ValidateSet('current', 'all-hosts', 'all-users', 'global')]
+    [string]$Profile = 'current',
+
+    [ValidateSet('current', 'windows', 'pwsh', 'both')]
+    [string]$Shell = 'current'
+)
+
+# Detect current shell
+$currentShell = if ($PSVersionTable.PSVersion.Major -ge 6) { 'pwsh' } else { 'windows' }
+
+# Map friendly names to PowerShell profile properties
+$profileMap = @{
+    'current'    = 'CurrentUserCurrentHost'  # Default: Current user, current PowerShell host
+    'all-hosts'  = 'CurrentUserAllHosts'     # Current user, all PowerShell hosts
+    'all-users'  = 'AllUsersCurrentHost'     # All users, current PowerShell host
+    'global'     = 'AllUsersAllHosts'        # All users, all PowerShell hosts
+}
+
+# Determine which shells to target
+$targetShells = @()
+if ($Shell -eq 'current') {
+    $targetShells += $currentShell
+} elseif ($Shell -eq 'both') {
+    $targetShells += @('windows', 'pwsh')
+} else {
+    $targetShells += $Shell
+}
+
+$profileScope = $profileMap[$Profile]
+
 $requiredPolicy = "RemoteSigned"
 $repoUrl = "https://github.com/DreamTimeZ/terminal-themes.git"
 $repoName = "TerminalThemes"
@@ -81,19 +131,74 @@ function Copy-GitRepositoryIfNeeded {
     }
 }
 
-# Writes or updates the PowerShell profile file at the specified path
+# Get profile path for specific shell and scope
+function Get-ProfilePath {
+    param (
+        [Parameter(Mandatory = $true)][string]$shell,
+        [Parameter(Mandatory = $true)][string]$scope
+    )
+
+    $documentsPath = [Environment]::GetFolderPath('MyDocuments')
+
+    # Determine base directory based on shell
+    $shellDir = if ($shell -eq 'pwsh') { 'PowerShell' } else { 'WindowsPowerShell' }
+
+    # Determine profile filename based on scope
+    $profileName = switch ($scope) {
+        'CurrentUserCurrentHost' { 'Microsoft.PowerShell_profile.ps1' }
+        'CurrentUserAllHosts'    { 'profile.ps1' }
+        'AllUsersCurrentHost'    {
+            $programFiles = [Environment]::GetFolderPath('ProgramFiles')
+            return Join-Path -Path $programFiles -ChildPath "$shellDir\Microsoft.PowerShell_profile.ps1"
+        }
+        'AllUsersAllHosts'       {
+            $programFiles = [Environment]::GetFolderPath('ProgramFiles')
+            return Join-Path -Path $programFiles -ChildPath "$shellDir\profile.ps1"
+        }
+    }
+
+    # For CurrentUser scopes
+    if ($scope -like 'CurrentUser*') {
+        return Join-Path -Path $documentsPath -ChildPath "$shellDir\$profileName"
+    }
+
+    return $profileName
+}
+
+# Creates a symbolic link for the PowerShell profile file at the specified path
 function Write-ProfileFile {
     param (
         [Parameter(Mandatory = $true)][string]$sourcePath,
-        [Parameter(Mandatory = $true)][string]$profilePath
+        [Parameter(Mandatory = $true)][string]$profilePath,
+        [Parameter(Mandatory = $true)][string]$shellName
     )
 
     $profileDir = [System.IO.Path]::GetDirectoryName($profilePath)
+    $absoluteSourcePath = Resolve-Path -Path $sourcePath
+
+    # Check if running as administrator
+    $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+    if (-not $isAdmin) {
+        Write-Output "Creating symbolic link for $shellName requires administrator privileges. Requesting elevation..."
+        $command = "New-Item -ItemType Directory -Path '$profileDir' -Force; New-Item -ItemType SymbolicLink -Path '$profilePath' -Target '$absoluteSourcePath' -Force"
+        Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList "-Command", $command -Wait
+
+        # Verify the symlink was created
+        if (Test-Path -Path $profilePath) {
+            Write-Output "[$shellName] Profile symbolic link created successfully at: $profilePath"
+        } else {
+            Write-Error "[$shellName] Failed to create symbolic link. Please check permissions."
+        }
+        return
+    }
+
+    # If already admin, create the symlink directly
     if (-not (Test-Path -Path $profileDir)) {
         try {
             New-Item -ItemType Directory -Path $profileDir -Force | Out-Null
         } catch {
-            Write-Error "Error creating directory for PowerShell profile: $_"
+            Write-Error "[$shellName] Error creating directory for PowerShell profile: $_"
             return
         }
     }
@@ -101,31 +206,35 @@ function Write-ProfileFile {
     $profileExists = Test-Path -Path $profilePath
 
     if ($profileExists) {
-        $response = Read-Host "The profile file already exists. Do you want to overwrite it? (y/n)"
+        $response = Read-Host "[$shellName] Profile already exists at $profilePath. Overwrite? (y/n)"
         if ($response -notin @('y', 'Y')) {
-            Write-Output "Skipping profile setup as per user request."
+            Write-Output "[$shellName] Skipping profile setup as per user request."
             return
         }
+        # Remove existing file/symlink before creating new one
+        Remove-Item -Path $profilePath -Force
     }
 
     try {
-        Copy-Item -Path $sourcePath -Destination $profilePath -Force
-        if ($LastExitCode -ne 0) {
-            throw "Failed to set up PowerShell profile"
-        }
-
-        if ($profileExists) {
-            Write-Output "PowerShell profile updated successfully."
-        } else {
-            Write-Output "PowerShell profile created successfully."
-        }
+        New-Item -ItemType SymbolicLink -Path $profilePath -Target $absoluteSourcePath -Force | Out-Null
+        Write-Output "[$shellName] Profile symbolic link created successfully at: $profilePath"
     } catch {
-        Write-Error "Error setting up PowerShell profile: $_"
+        Write-Error "[$shellName] Error creating symbolic link for PowerShell profile: $_"
     }
 }
 
 try {
-    Write-Host "Tip: To install it for PowerShell Core (pwsh) instead of Windows PowerShell, simply run the install.ps1 in the pwsh terminal; everything else is handled automatically."
+    Write-Host "=== PowerShell Profile Installation ===`n"
+    Write-Host "Running from:    $currentShell"
+    Write-Host "Target shell(s): $($targetShells -join ', ')"
+    Write-Host "Profile scope:   $profileScope ($Profile)`n"
+
+    Write-Host "Options:"
+    Write-Host "  Profile Scopes: -Profile current | all-hosts | all-users | global"
+    Write-Host "  Shell Targets:  -Shell current | windows | pwsh | both"
+    Write-Host ""
+    Write-Host "Example: .\install.ps1 -Profile current -Shell both`n"
+
     Set-ExecutionPolicyIfNeeded
 
     foreach ($pkg in $packages) {
@@ -135,9 +244,18 @@ try {
     Install-PackageIfNeeded -packageId "Git.Git" -isInteractive $true
     # Clone Terminal Themes repository if not already cloned
     Copy-GitRepositoryIfNeeded -repoUrl $repoUrl -destinationPath $repoPath
-    Write-ProfileFile -sourcePath $profileSourcePath -profilePath $profilePath
 
-    Write-Output "Installation completed successfully."
+    # Create symlinks for each target shell
+    Write-Host "`n=== Creating Profile Symbolic Links ===`n"
+    foreach ($targetShell in $targetShells) {
+        $targetProfilePath = Get-ProfilePath -shell $targetShell -scope $profileScope
+        $shellDisplayName = if ($targetShell -eq 'pwsh') { 'PowerShell 7+' } else { 'Windows PowerShell' }
+
+        Write-Host "Processing $shellDisplayName..."
+        Write-ProfileFile -sourcePath $profileSourcePath -profilePath $targetProfilePath -shellName $shellDisplayName
+    }
+
+    Write-Output "`nInstallation completed successfully."
 } catch {
     Write-Error "An unexpected error occurred during the installation process. Error: $_"
     exit 1

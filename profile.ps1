@@ -7,6 +7,8 @@
 # Clear the console screen
 [System.Console]::Clear()
 
+$startTime = Get-Date
+
 #==================================================================================================
 # BASIC ALIASES
 #==================================================================================================
@@ -467,8 +469,29 @@ function gcmd {
 # PROMPT & SHELL INITIALIZATION
 #==================================================================================================
 
+$startTimeTheme = Get-Date
+
 # Oh My Posh - Prompt theme engine
 oh-my-posh init pwsh --config "$([Environment]::GetFolderPath('MyDocuments'))\TerminalThemes\oh-my-posh-theme.json" | Invoke-Expression
 
+$endTime = Get-Date
+$executionTime = $endTime - $startTime
+$executionTimeTheme = $endTime - $startTimeTheme
+
+if ($executionTime.TotalSeconds -gt 1) {
+    if ($executionTimeTheme.TotalSeconds -gt 1) {
+        Write-Host "Terminal startup time: $($executionTime.TotalSeconds) s (Theme: $($executionTimeTheme.TotalSeconds) s)"
+    } else {
+        Write-Host "Terminal startup time: $($executionTime.TotalSeconds) s (Theme: $($executionTimeTheme.Milliseconds) ms)"
+    }
+} else {
+    Write-Host "Terminal startup time: $($executionTime.Milliseconds) ms (Theme: $($executionTimeTheme.Milliseconds) ms)"
+}
+
+
 # Zoxide - Smart directory jumper initialization
 Invoke-Expression (& { (zoxide init powershell | Out-String) })
+
+if (Get-Module -ListAvailable -Name Microsoft.WinGet.CommandNotFound) {
+    Import-Module -Name Microsoft.WinGet.CommandNotFound
+}
