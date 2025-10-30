@@ -1,5 +1,15 @@
+#==================================================================================================
+# POWERSHELL PROFILE CONFIGURATION
+#==================================================================================================
+# Description: Custom PowerShell profile with aliases, functions, and tool integrations
+#==================================================================================================
+
 # Clear the console screen
 [System.Console]::Clear()
+
+#==================================================================================================
+# BASIC ALIASES
+#==================================================================================================
 
 # Remove conflicting aliases and set custom ones
 Remove-Item -Path Alias:ls -ErrorAction Ignore
@@ -10,84 +20,174 @@ Set-Alias -Name touch -Value New-Item
 Set-Alias -Name cd -Value z
 Set-Alias -Name cdi -Value zi
 
-if (Get-Command git -ErrorAction SilentlyContinue) {
-
-    function ga     { git add .; git status }
-    function gs     { git status @args }
-    function gst    { git stash @args }
-    function gstp   { git stash pop @args }
-    function grmc   { git rm --cached @args }
-    function grao   { git remote add origin @args }
-    function gi     { git init @args }
-    function gsw    { git switch @args }
-    function gswc   { git switch -c @args }
-    function gb     { git branch @args }
-    function gbd    { git branch -d @args }
-    function gbD    { git branch -D @args }
-    function gbrd   { git push origin --delete @args }
-    function gco    { git commit @args }
-    function gca    { git commit --amend @args }
-    function gcqundo { git reset --soft HEAD~1 @args }
-    function gpl    { git pull @args }
-    function gpush  { git push @args }
-    function gpsf   { git push --force-with-lease @args }
-    function glg    { git log --oneline --graph --decorate --all @args }
-    function glog   { git log --oneline --decorate @args }
-    function ghist  { git log --pretty=format:"%h %ad | %s%d [%an]" --graph --date=short @args }
-    function gdf    { git diff @args }
-    function gdc    { git diff --cached @args }
-    function grs    { git restore . @args }
-    function grss   { git restore --staged . @args }
-    function grb    { git rebase @args }
-    function grbi   { git rebase -i @args }
-    function gcl    { git clone @args }
-    function gfa    { git fetch --all --prune @args }
-    function glast  { git log -1 HEAD @args }
-    function gtags  { git tag -l @args }
-    function gtagd  { git tag -d @args }
+#--------------------------------------------------------------------------------------------------
+# EZA (Modern ls replacement)
+#--------------------------------------------------------------------------------------------------
+if (Get-Command eza -ErrorAction SilentlyContinue) {
+    function ls  { eza --color=auto --group-directories-first $args }
+    function la  { eza -a --color=always --group-directories-first --icons $args }
+    function ll  { eza -l --color=always --group-directories-first --icons $args }
+    function lla { eza -la --color=always --group-directories-first --icons $args }
+    function lh  { eza -l --color=always --icons .* 2>$null }
+    function lt  { eza -a -T $args }
+    function tree { eza --tree --level=2 --icons $args }
 }
 
-if (Get-Command poetry -ErrorAction SilentlyContinue) {
+#--------------------------------------------------------------------------------------------------
+# GIT ALIASES
+#--------------------------------------------------------------------------------------------------
+if (Get-Command git -ErrorAction SilentlyContinue) {
+    # Status & Information
+    function gs { git status $args }
+    function gdf { git diff }
+    function gdc { git diff --cached }
+    function glg { git log --oneline --graph --decorate --all }
+    function ghist { git log --pretty=format:"%h %ad | %s%d [%an]" --graph --date=short }
+    function glast { git log -1 HEAD }
 
+    # Branching & Switching
+    function gb { git branch $args }
+    function gbd { git branch -d $args }
+    function gbD { git branch -D $args }
+    function gsw { git switch $args }
+    function gswc { git switch -c $args }
+    function gbrd { git push origin --delete $args }
+
+    # Committing
+    function ga { git add .; git status }
+    function gcom { git commit -m "$args" }
+    function gca { git commit --amend $args }
+    function gcundo { git reset --soft HEAD~1 }
+
+    # Stashing
+    function gst { git stash $args }
+    function gstp { git stash pop }
+
+    # Remote Operations
+    function gcl { git clone $args }
+    function gpl { git pull $args }
+    function gpsh { git push $args }
+    function gpsf { git push --force-with-lease }
+    function grao { git remote add origin $args }
+    function gfa { git fetch --all --prune }
+
+    # Rebasing
+    function grb { git rebase $args }
+    function grbi { git rebase -i $args }
+
+    # File Operations
+    function grs { git restore . }
+    function grss { git restore --staged . }
+    function grmc { git rm --cached $args }
+
+    # Tags
+    function gtags { git tag -l }
+    function gtagd { git tag -d $args }
+}
+
+#--------------------------------------------------------------------------------------------------
+# NAVIGATION SHORTCUTS
+#--------------------------------------------------------------------------------------------------
+function .. { Set-Location .. }
+function ... { Set-Location ../.. }
+function .... { Set-Location ../../.. }
+
+#--------------------------------------------------------------------------------------------------
+# POETRY (Python dependency management)
+#--------------------------------------------------------------------------------------------------
+if (Get-Command poetry -ErrorAction SilentlyContinue) {
+    # Package Management
     function pi      { poetry install @args }
     function pu      { poetry update @args }
     function plock   { poetry lock @args }
     function pa      { poetry add @args }
     function pad     { poetry add --dev @args }
     function prm     { poetry remove @args }
+
+    # Running Commands
     function prun    { poetry run @args }
     function prp     { poetry run python @args }
     function prt     { poetry run task @args }
     function ptest   { poetry run pytest @args }
+
+    # Code Quality Tools
     function pblack  { poetry run black . @args }
     function pisort  { poetry run isort . @args }
     function pmypy   { poetry run mypy . @args }
+
+    # Environment Management
     function pvenv   { poetry env use python @args }
     function pvi     { poetry env info @args }
+
+    # Information & Diagnostics
     function pshow   { poetry show @args }
     function ptree   { poetry show --tree @args }
     function poutdated { poetry show --outdated @args }
     function pch     { poetry check @args }
+
+    # Build
     function pbuild  { poetry build @args }
 }
 
-# Change directory using fzf to select a folder
-function cdf {
-    try {
-        $selectedPath = Get-ChildItem -Directory -Recurse -ErrorAction SilentlyContinue -Force |
-        ForEach-Object { $_.FullName } |
-        fzf --preview 'echo {}'
-
-        if ($selectedPath) {
-            Set-Location -Path $selectedPath
-        } else {
-            Write-Host "No selection made."
-        }
-    } catch {
-        Write-Host "An error occurred: $_"
+#--------------------------------------------------------------------------------------------------
+# ZOXIDE (Smart directory navigation)
+#--------------------------------------------------------------------------------------------------
+if (Get-Command zoxide -ErrorAction SilentlyContinue) {
+    function cdi { zoxide query --interactive }
+    function cdf {
+        $dest = zoxide query --interactive
+        if ($dest) { Set-Location $dest }
     }
 }
 
+#--------------------------------------------------------------------------------------------------
+# DOCKER
+#--------------------------------------------------------------------------------------------------
+if (Get-Command docker -ErrorAction SilentlyContinue) {
+    Set-Alias d docker
+    function dps { docker ps $args }
+    function di { docker images $args }
+    function dex { docker exec -it $args }
+    function dlogs { docker logs -f $args }
+    function dprune { docker system prune }
+}
+
+#--------------------------------------------------------------------------------------------------
+# APPLICATION LAUNCHERS
+#--------------------------------------------------------------------------------------------------
+function n { notepad $args }
+function obsidian { & "$env:userprofile\AppData\Local\Programs\Obsidian\Obsidian.exe" $args }
+function firefox { & "$env:programfiles\Mozilla Firefox\firefox.exe" $args }
+function dockerd { & "$env:programfiles\Docker\Docker\Docker Desktop.exe" $args}
+
+#--------------------------------------------------------------------------------------------------
+# OLLAMA (Local LLM management)
+#--------------------------------------------------------------------------------------------------
+if (Get-Command ollama -ErrorAction SilentlyContinue) {
+    function ollama-up {
+        if (-not (Get-Process ollama -ErrorAction SilentlyContinue)) {
+            Start-Process -WindowStyle Hidden -FilePath ollama -ArgumentList 'serve'
+        }
+    }
+}
+
+#==================================================================================================
+# UTILITY FUNCTIONS
+#==================================================================================================
+
+#--------------------------------------------------------------------------------------------------
+# Profile & Environment Management
+#--------------------------------------------------------------------------------------------------
+function reload { . $PROFILE }
+function reload-path {
+    $machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+    $userPath = [System.Environment]::GetEnvironmentVariable("Path", "User")
+    $env:Path = "$machinePath;$userPath"
+}
+
+#--------------------------------------------------------------------------------------------------
+# Text Search & Processing
+#--------------------------------------------------------------------------------------------------
 # Search text in a pipeline or input for a pattern
 function grep {
     param (
@@ -99,6 +199,9 @@ function grep {
     }
 }
 
+#--------------------------------------------------------------------------------------------------
+# Process Management
+#--------------------------------------------------------------------------------------------------
 # Kill a process by name
 function pkill {
     param ([string] $ProcessName)
@@ -110,12 +213,18 @@ function pkill {
     }
 }
 
+#--------------------------------------------------------------------------------------------------
+# System Power Management
+#--------------------------------------------------------------------------------------------------
 # Shutdown the system
 function poweroff { shutdown /s /t 0 }
 
 # Reboot the system
 function reboot { shutdown /r /t 0 }
 
+#--------------------------------------------------------------------------------------------------
+# Network Information
+#--------------------------------------------------------------------------------------------------
 # Retrieve public and local IPv4 addresses
 function IPv4 {
     [CmdletBinding()]
@@ -259,14 +368,40 @@ function IPv6 {
     }
 }
 
+#--------------------------------------------------------------------------------------------------
+# Package Management
+#--------------------------------------------------------------------------------------------------
 # Update all installed packages using Winget
 function update {
-    param ([Alias("f")] [switch] $Force)
-    $wingetArgs = @("--all", "--silent", "--accept-package-agreements", "--accept-source-agreements")
-    if ($Force) { $wingetArgs += "--force" }
-    winget upgrade @wingetArgs
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [Alias('f')][switch] $Force,
+        [Alias('s')][switch] $Silent
+    )
+
+    $wingetArgs = @(
+        'upgrade'
+        '--all'
+        '--accept-package-agreements'
+        '--accept-source-agreements'
+    )
+
+    if (-not $Silent) {
+        $wingetArgs += '--interactive'
+    } else {
+        $wingetArgs += @('--silent')
+    }
+
+    if ($Force) { $wingetArgs += '--force' }
+
+    if ($PSCmdlet.ShouldProcess('All packages', 'Upgrade')) {
+        winget @wingetArgs
+    }
 }
 
+#--------------------------------------------------------------------------------------------------
+# System Information
+#--------------------------------------------------------------------------------------------------
 # Display system uptime
 function uptime {
     $lastBootTime = (Get-CimInstance -ClassName Win32_OperatingSystem).LastBootUpTime
@@ -296,6 +431,9 @@ function uptime {
     return "System last booted: $lastBootTimeString`nUptime: $uptimeString"
 }
 
+#--------------------------------------------------------------------------------------------------
+# PowerShell Command History & Discovery
+#--------------------------------------------------------------------------------------------------
 # Show system wide history for powershell commands
 function hist { Get-Content (Get-PSReadlineOption).HistorySavePath }
 
@@ -325,14 +463,12 @@ function gcmd {
     }
 }
 
-# Use eza as aliases for ls with different options
-function la { eza -a $args }
-function ll { eza -a -l $args }
-function lt { eza -a -T $args }
-function ls { eza $args }
-# Open Notepad or files in Notepad
-function n { notepad $args }
+#==================================================================================================
+# PROMPT & SHELL INITIALIZATION
+#==================================================================================================
 
+# Oh My Posh - Prompt theme engine
 oh-my-posh init pwsh --config "$([Environment]::GetFolderPath('MyDocuments'))\TerminalThemes\oh-my-posh-theme.json" | Invoke-Expression
 
+# Zoxide - Smart directory jumper initialization
 Invoke-Expression (& { (zoxide init powershell | Out-String) })
