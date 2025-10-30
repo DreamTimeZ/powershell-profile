@@ -53,7 +53,7 @@ $requiredPolicy = "RemoteSigned"
 $repoUrl = "https://github.com/DreamTimeZ/terminal-themes.git"
 $repoName = "TerminalThemes"
 $profileSourcePath = ".\profile.ps1"
-$packages = @("junegunn.fzf", "Neovim.Neovim", "ajeetdsouza.zoxide", "JanDeDobbeleer.OhMyPosh", "eza-community.eza")
+$packages = @("junegunn.fzf", "Neovim.Neovim", "ajeetdsouza.zoxide", "JanDeDobbeleer.OhMyPosh", "Starship.Starship", "eza-community.eza")
 $documentsPath = [Environment]::GetFolderPath('MyDocuments')
 $repoPath = Join-Path -Path $documentsPath -ChildPath $repoName
 
