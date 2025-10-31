@@ -53,7 +53,7 @@ $requiredPolicy = "RemoteSigned"
 $repoUrl = "https://github.com/DreamTimeZ/terminal-themes.git"
 $repoName = "TerminalThemes"
 $profileSourcePath = ".\profile.ps1"
-$packages = @("junegunn.fzf", "Neovim.Neovim", "ajeetdsouza.zoxide", "JanDeDobbeleer.OhMyPosh", "eza-community.eza")
+$packages = @("junegunn.fzf", "Neovim.Neovim", "ajeetdsouza.zoxide", "JanDeDobbeleer.OhMyPosh", "Starship.Starship", "eza-community.eza")
 $documentsPath = [Environment]::GetFolderPath('MyDocuments')
 $repoPath = Join-Path -Path $documentsPath -ChildPath $repoName
 
@@ -72,14 +72,26 @@ function Test-ShouldAdjustExecutionPolicy {
 # Adjusts the execution policy to the required level if needed
 function Set-ExecutionPolicyIfNeeded {
     try {
-        $currentPolicy = Get-ExecutionPolicy -Scope CurrentUser
+        # Check if we're already running with Bypass or Unrestricted (e.g., from batch file)
+        $processPolicy = Get-ExecutionPolicy -Scope Process -ErrorAction SilentlyContinue
+        if ($processPolicy -in @('Bypass', 'Unrestricted')) {
+            return
+        }
+
+        # Try to import the Security module if Get-ExecutionPolicy isn't available
+        if (-not (Get-Command Get-ExecutionPolicy -ErrorAction SilentlyContinue)) {
+            Import-Module Microsoft.PowerShell.Security -ErrorAction Stop
+        }
+
+        $currentPolicy = Get-ExecutionPolicy -Scope CurrentUser -ErrorAction Stop
         if (Test-ShouldAdjustExecutionPolicy -currentPolicy $currentPolicy -requiredPolicy $requiredPolicy) {
             Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy $requiredPolicy -Force -ErrorAction Stop
             Write-Output "Execution policy set to $requiredPolicy successfully."
         }
     } catch {
-        Write-Error "Failed to set execution policy. Error: $_"
-        exit 1
+        # If the Security module can't be loaded but we're running this script,
+        # it means we already have sufficient permissions (likely via -ExecutionPolicy Bypass)
+        Write-Warning "Could not verify execution policy. Continuing..."
     }
 }
 
@@ -90,8 +102,8 @@ function Install-PackageIfNeeded {
         [bool]$isInteractive = $false
     )
 
-    Write-Output "Checking if $packageId is installed..."
-    if (-not (winget list --id $packageId -e | Select-String -Quiet $packageId)) {
+    if (-not (winget list --id $packageId -e 2>$null | Select-String -Quiet $packageId)) {
+        Write-Output "Installing $packageId..."
         $installArgs = @(
             "--id", $packageId, "-e", "-s", "winget",
             "--accept-package-agreements", "--accept-source-agreements"
@@ -117,7 +129,7 @@ function Copy-GitRepositoryIfNeeded {
     )
 
     if (-not (Test-Path -Path $destinationPath)) {
-        Write-Output "Cloning repository from $repoUrl..."
+        Write-Output "Cloning terminal themes..."
         try {
             git clone $repoUrl $destinationPath
             if ($LastExitCode -ne 0) {
@@ -126,8 +138,6 @@ function Copy-GitRepositoryIfNeeded {
         } catch {
             Write-Error "Error cloning repository: ${_}"
         }
-    } else {
-        Write-Output "Repository already exists at $destinationPath. Skipping clone."
     }
 }
 
@@ -224,16 +234,7 @@ function Write-ProfileFile {
 }
 
 try {
-    Write-Host "=== PowerShell Profile Installation ===`n"
-    Write-Host "Running from:    $currentShell"
-    Write-Host "Target shell(s): $($targetShells -join ', ')"
-    Write-Host "Profile scope:   $profileScope ($Profile)`n"
-
-    Write-Host "Options:"
-    Write-Host "  Profile Scopes: -Profile current | all-hosts | all-users | global"
-    Write-Host "  Shell Targets:  -Shell current | windows | pwsh | both"
-    Write-Host ""
-    Write-Host "Example: .\install.ps1 -Profile current -Shell both`n"
+    Write-Output "Installing PowerShell profile ($profileScope) for $($targetShells -join ', ')...`n"
 
     Set-ExecutionPolicyIfNeeded
 
@@ -246,16 +247,15 @@ try {
     Copy-GitRepositoryIfNeeded -repoUrl $repoUrl -destinationPath $repoPath
 
     # Create symlinks for each target shell
-    Write-Host "`n=== Creating Profile Symbolic Links ===`n"
+    Write-Output "`nCreating profile links..."
     foreach ($targetShell in $targetShells) {
         $targetProfilePath = Get-ProfilePath -shell $targetShell -scope $profileScope
         $shellDisplayName = if ($targetShell -eq 'pwsh') { 'PowerShell 7+' } else { 'Windows PowerShell' }
 
-        Write-Host "Processing $shellDisplayName..."
         Write-ProfileFile -sourcePath $profileSourcePath -profilePath $targetProfilePath -shellName $shellDisplayName
     }
 
-    Write-Output "`nInstallation completed successfully."
+    Write-Output "`nInstallation complete."
 } catch {
     Write-Error "An unexpected error occurred during the installation process. Error: $_"
     exit 1

@@ -9,7 +9,8 @@ if %errorlevel% neq 0 (
 )
 
 :: Run the PowerShell script with ExecutionPolicy Bypass and without loading any profiles
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1"
+:: Forward all command-line arguments to the PowerShell script
+powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0install.ps1" %*
 if %errorlevel% neq 0 (
     echo PowerShell script failed with error code %errorlevel%.
     pause
