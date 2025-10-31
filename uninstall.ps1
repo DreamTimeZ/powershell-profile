@@ -50,7 +50,7 @@ if ($Shell -eq 'current') {
 $profileScope = $profileMap[$Profile]
 $requiredPolicy = "RemoteSigned"
 $repoName = "TerminalThemes"
-$packages = @("junegunn.fzf", "Neovim.Neovim", "ajeetdsouza.zoxide", "JanDeDobbeleer.OhMyPosh", "eza-community.eza", "Git.Git")
+$packages = @("junegunn.fzf", "Neovim.Neovim", "ajeetdsouza.zoxide", "JanDeDobbeleer.OhMyPosh", "Starship.Starship", "eza-community.eza", "Git.Git")
 $documentsPath = [Environment]::GetFolderPath('MyDocuments')
 $repoPath = Join-Path -Path $documentsPath -ChildPath $repoName
 
