@@ -9,8 +9,7 @@
 5. [Usage](#usage)
 6. [Uninstallation](#uninstallation)
 
-## Preview
-
+## Preview   
 ![Preview](preview.png)
 
 ## Overview
