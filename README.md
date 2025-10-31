@@ -14,7 +14,7 @@
 
 ## Overview
 
-A customized PowerShell profile for both Windows PowerShell and PowerShell Core (pwsh) with enhanced productivity features, modern tools integration, and themed appearance. Installation scripts automatically handle dependencies and configuration using symbolic links for seamless updates.
+Customized PowerShell profile with enhanced productivity features, modern tools integration, and themed appearance. Supports both Windows PowerShell and pwsh with automated installation via symlinks for seamless updates.
 
 ## Features
 
@@ -41,39 +41,29 @@ A customized PowerShell profile for both Windows PowerShell and PowerShell Core 
 ### Quick Start
 
 ```powershell
-.\install.ps1
+.\install.bat  # Installs for current user & shell (-Profile current -Shell current)
 ```
 
-**What it does:**
-1. Installs dependencies via winget (eza, zoxide, Oh My Posh, Neovim, Git, fzf)
-2. Clones [terminal-themes](https://github.com/DreamTimeZ/terminal-themes) to `~/Documents/TerminalThemes`
-3. Creates a symbolic link to the profile (requires UAC elevation)
-
-Restart your terminal or run `& $PROFILE` to activate.
+Auto-detects PowerShell (prefers pwsh), installs dependencies via winget (eza, zoxide, Oh My Posh, Neovim, Git, fzf, Starship), clones [terminal-themes](https://github.com/DreamTimeZ/terminal-themes), and creates a profile symlink (requires UAC). Restart terminal or run `& $PROFILE` to activate.
 
 ### Configuration Options
 
-**Profile Scope:**
 ```powershell
-.\install.ps1 -Profile current      # Current user, current host (default)
-.\install.ps1 -Profile all-hosts    # Current user, all PowerShell hosts
-.\install.ps1 -Profile all-users    # All users, current host (requires admin)
-.\install.ps1 -Profile global       # All users, all hosts (requires admin)
-```
+# Profile Scope
+-Profile current      # Current user, current host (default)
+-Profile all-hosts    # Current user, all hosts
+-Profile all-users    # All users, current host (admin required)
+-Profile global       # All users, all hosts (admin required)
 
-**Shell Target:**
-```powershell
-.\install.ps1 -Shell current        # Current shell only (default)
-.\install.ps1 -Shell windows        # Windows PowerShell only
-.\install.ps1 -Shell pwsh           # PowerShell 7+ only
-.\install.ps1 -Shell both           # Both shells
-```
+# Shell Target
+-Shell current        # Auto-detect current shell (default)
+-Shell windows        # Windows PowerShell 5.1
+-Shell pwsh           # PowerShell 7+
+-Shell both           # Both shells
 
-**Examples:**
-```powershell
-.\install.ps1 -Profile current -Shell both
-.\install.ps1 -Profile all-hosts -Shell pwsh
-Get-Help .\install.ps1 -Detailed
+# Examples
+.\install.bat -Profile current -Shell both
+.\install.bat -Profile all-hosts -Shell pwsh
 ```
 
 ## Usage
@@ -147,18 +137,12 @@ vi file.txt           # Open in Neovim
 ## Uninstallation
 
 ```powershell
-.\uninstall.ps1
-```
-
-Use the same `-Profile` and `-Shell` parameters from installation:
-
-```powershell
+.\uninstall.ps1  # Supports same -Profile and -Shell parameters
 .\uninstall.ps1 -Profile current -Shell both
-.\uninstall.ps1 -Profile all-hosts -Shell pwsh
 Get-Help .\uninstall.ps1 -Detailed
 ```
 
-The script prompts to remove packages, themes, and profile symlinks.
+Prompts to remove packages, themes, and profile symlinks.
 
 ---
 

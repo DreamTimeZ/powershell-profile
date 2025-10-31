@@ -10,7 +10,11 @@
     - global: All users, all hosts (requires admin)
 
 .PARAMETER Shell
-    Target shell: current (default) | windows | pwsh | both
+    Target shell:
+    - current (default): Detects current shell (pwsh uses Documents\PowerShell, Windows PowerShell uses Documents\WindowsPowerShell)
+    - windows: Windows PowerShell 5.1 (Documents\WindowsPowerShell)
+    - pwsh: PowerShell 7+ (Documents\PowerShell)
+    - both: Install to both shells
 
 .EXAMPLE
     .\install.ps1
@@ -71,16 +75,22 @@ function Test-ShouldAdjustExecutionPolicy {
 
 # Adjusts the execution policy to the required level if needed
 function Set-ExecutionPolicyIfNeeded {
-    try {
-        # Check if we're already running with Bypass or Unrestricted (e.g., from batch file)
-        $processPolicy = Get-ExecutionPolicy -Scope Process -ErrorAction SilentlyContinue
-        if ($processPolicy -in @('Bypass', 'Unrestricted')) {
+    # Try to import the Security module if Get-ExecutionPolicy isn't available
+    if (-not (Get-Command Get-ExecutionPolicy -ErrorAction SilentlyContinue)) {
+        try {
+            Import-Module Microsoft.PowerShell.Security -ErrorAction Stop
+        } catch {
+            # If the Security module can't be loaded but we're running this script,
+            # it means we already have sufficient permissions (likely via -ExecutionPolicy Bypass)
             return
         }
+    }
 
-        # Try to import the Security module if Get-ExecutionPolicy isn't available
-        if (-not (Get-Command Get-ExecutionPolicy -ErrorAction SilentlyContinue)) {
-            Import-Module Microsoft.PowerShell.Security -ErrorAction Stop
+    try {
+        # Check if we're already running with Bypass or Unrestricted (e.g., from batch file)
+        $processPolicy = Get-ExecutionPolicy -Scope Process -ErrorAction Stop
+        if ($processPolicy -in @('Bypass', 'Unrestricted')) {
+            return
         }
 
         $currentPolicy = Get-ExecutionPolicy -Scope CurrentUser -ErrorAction Stop
@@ -89,9 +99,9 @@ function Set-ExecutionPolicyIfNeeded {
             Write-Output "Execution policy set to $requiredPolicy successfully."
         }
     } catch {
-        # If the Security module can't be loaded but we're running this script,
+        # If we can't check or set execution policy but we're running this script,
         # it means we already have sufficient permissions (likely via -ExecutionPolicy Bypass)
-        Write-Warning "Could not verify execution policy. Continuing..."
+        return
     }
 }
 
@@ -234,7 +244,18 @@ function Write-ProfileFile {
 }
 
 try {
-    Write-Output "Installing PowerShell profile ($profileScope) for $($targetShells -join ', ')...`n"
+    # Show detected shell information
+    $shellInfo = if ($Shell -eq 'current') {
+        $detectedName = if ($currentShell -eq 'pwsh') { 'PowerShell 7+' } else { 'Windows PowerShell 5.1' }
+        $detectedDir = if ($currentShell -eq 'pwsh') { 'PowerShell' } else { 'WindowsPowerShell' }
+        "Detected: $detectedName (using Documents\$detectedDir)"
+    } else {
+        ""
+    }
+
+    Write-Output "Installing PowerShell profile ($profileScope) for $($targetShells -join ', ')..."
+    if ($shellInfo) { Write-Output $shellInfo }
+    Write-Output ""
 
     Set-ExecutionPolicyIfNeeded
 
