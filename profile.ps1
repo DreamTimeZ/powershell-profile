@@ -10,11 +10,10 @@
 $startTime = Get-Date
 
 # Cache command existence checks for performance (single PATH search)
-$availableCommands = (Get-Command eza, git, poetry, zoxide, docker, ollama -ErrorAction SilentlyContinue).Name -replace '\.exe$', ''
+$availableCommands = (Get-Command eza, git, zoxide, docker, ollama -ErrorAction SilentlyContinue).Name -replace '\.exe$', ''
 $Commands = @{
     Eza     = 'eza' -in $availableCommands
     Git     = 'git' -in $availableCommands
-    Poetry  = 'poetry' -in $availableCommands
     Zoxide  = 'zoxide' -in $availableCommands
     Docker  = 'docker' -in $availableCommands
     Ollama  = 'ollama' -in $availableCommands
@@ -26,76 +25,92 @@ $Commands = @{
 
 # Remove conflicting aliases and set custom ones
 Remove-Item -Path Alias:ls -ErrorAction Ignore
-Remove-Item -Path Alias:cd -ErrorAction Ignore
 
-Set-Alias -Name vi -Value "$env:programfiles\Neovim\bin\nvim.exe"
+if ($nvim = Get-Command nvim -CommandType Application -ErrorAction SilentlyContinue) {
+    Set-Alias -Name vi -Value $nvim.Source
+}
 Set-Alias -Name touch -Value New-Item
-Set-Alias -Name cd -Value z
-Set-Alias -Name cdi -Value zi
+Set-Alias -Name pbcopy -Value Set-Clipboard
+Set-Alias -Name pbpaste -Value Get-Clipboard
 
 #--------------------------------------------------------------------------------------------------
 # EZA (Modern ls replacement)
 #--------------------------------------------------------------------------------------------------
 if ($Commands.Eza) {
-    function ls  { eza --color=auto --group-directories-first $args }
-    function la  { eza -a --color=always --group-directories-first --icons $args }
-    function ll  { eza -l --color=always --group-directories-first --icons $args }
-    function lla { eza -la --color=always --group-directories-first --icons $args }
-    function lh  { eza -l --color=always --icons .* 2>$null }
-    function lt  { eza -a -T $args }
-    function tree { eza --tree --level=2 --icons $args }
+    function ls { eza --color=auto --group-directories-first @args }
+    function l { eza -l --color=auto --group-directories-first @args }
+    function ll { eza -l --color=auto --group-directories-first --icons=auto @args }
+    function la { eza -lA --color=auto --group-directories-first --icons=auto @args }
+    function ld { eza -lD --color=auto --icons=auto @args }
+    function lh { eza -ld --color=auto --icons=auto .* 2>$null }
+    function tree { eza --tree --level=2 --color=auto --icons=auto @args }
+    function ltree { eza --tree --level=3 --color=auto --icons=auto @args }
 }
 
 #--------------------------------------------------------------------------------------------------
 # GIT ALIASES
 #--------------------------------------------------------------------------------------------------
 if ($Commands.Git) {
-    # Status & Information
-    function gs { git status $args }
-    function gdf { git diff }
-    function gdc { git diff --cached }
+    # Status & Staging
+    function gs { git status @args }
+    function ga { git add @args }
+    function gapa { git add --patch @args }
+    function gaa { git add -A; git status }
+    function gsta { git stash push @args }
+    function gstp { git stash pop }
+    function grmc { git rm --cached @args }
+
+    # Repository Management
+    function gi { git init @args }
+    function gcl { git clone @args }
+    function grao { git remote add origin @args }
+
+    # Branch Management
+    function gb { git branch @args }
+    function gsw { git switch @args }
+    function gswc { git switch -c @args }
+    function gbd { git branch -d @args }
+    function gbD { git branch -D @args }
+    function gbrd { git push origin --delete @args }
+
+    # Commits
+    function gc { git commit @args }
+    function gcmsg { git commit -m @args }
+    function gca { git commit --amend @args }
+    function gundo { git reset --soft HEAD~1 }
+
+    # Push/Pull
+    function gpl { git pull @args }
+    function gps { git push @args }
+    function gpsf { git push --force-with-lease }
+
+    # Logs & History
+    function glog { git log @args }
+    function glo { git log --oneline --decorate @args }
     function glg { git log --oneline --graph --decorate --all }
     function ghist { git log --pretty=format:"%h %ad | %s%d [%an]" --graph --date=short }
     function glast { git log -1 HEAD }
+    function gsh { git show @args }
 
-    # Branching & Switching
-    function gb { git branch $args }
-    function gbd { git branch -d $args }
-    function gbD { git branch -D $args }
-    function gsw { git switch $args }
-    function gswc { git switch -c $args }
-    function gbrd { git push origin --delete $args }
+    # Diffs & Changes
+    function gd { git diff @args }
+    function gds { git diff --staged @args }
+    function gdh { git diff HEAD @args }
+    function gr { git restore @args }
+    function grs { git restore --staged @args }
 
-    # Committing
-    function ga { git add .; git status }
-    function gcom { git commit -m "$args" }
-    function gca { git commit --amend $args }
-    function gcundo { git reset --soft HEAD~1 }
-
-    # Stashing
-    function gst { git stash $args }
-    function gstp { git stash pop }
-
-    # Remote Operations
-    function gcl { git clone $args }
-    function gpl { git pull $args }
-    function gpsh { git push $args }
-    function gpsf { git push --force-with-lease }
-    function grao { git remote add origin $args }
+    # Advanced Operations
+    function gm { git merge @args }
+    function gcp { git cherry-pick @args }
+    function grb { git rebase @args }
+    function grbi { git rebase -i @args }
+    function grbc { git rebase --continue }
+    function grba { git rebase --abort }
     function gfa { git fetch --all --prune }
-
-    # Rebasing
-    function grb { git rebase $args }
-    function grbi { git rebase -i $args }
-
-    # File Operations
-    function grs { git restore . }
-    function grss { git restore --staged . }
-    function grmc { git rm --cached $args }
 
     # Tags
     function gtags { git tag -l }
-    function gtagd { git tag -d $args }
+    function gtagd { git tag -d @args }
 }
 
 #--------------------------------------------------------------------------------------------------
@@ -104,43 +119,10 @@ if ($Commands.Git) {
 function .. { Set-Location .. }
 function ... { Set-Location ../.. }
 function .... { Set-Location ../../.. }
-
-#--------------------------------------------------------------------------------------------------
-# POETRY (Python dependency management)
-#--------------------------------------------------------------------------------------------------
-if ($Commands.Poetry) {
-    # Package Management
-    function pi      { poetry install @args }
-    function pu      { poetry update @args }
-    function plock   { poetry lock @args }
-    function pa      { poetry add @args }
-    function pad     { poetry add --dev @args }
-    function prm     { poetry remove @args }
-
-    # Running Commands
-    function prun    { poetry run @args }
-    function prp     { poetry run python @args }
-    function prt     { poetry run task @args }
-    function ptest   { poetry run pytest @args }
-
-    # Code Quality Tools
-    function pblack  { poetry run black . @args }
-    function pisort  { poetry run isort . @args }
-    function pmypy   { poetry run mypy . @args }
-
-    # Environment Management
-    function pvenv   { poetry env use python @args }
-    function pvi     { poetry env info @args }
-
-    # Information & Diagnostics
-    function pshow   { poetry show @args }
-    function ptree   { poetry show --tree @args }
-    function poutdated { poetry show --outdated @args }
-    function pch     { poetry check @args }
-
-    # Build
-    function pbuild  { poetry build @args }
-}
+function ..... { Set-Location ../../../.. }
+function ...... { Set-Location ../../../../.. }
+function ....... { Set-Location ../../../../../.. }
+function ........ { Set-Location ../../../../../../.. }
 
 #--------------------------------------------------------------------------------------------------
 # ZOXIDE (Smart directory navigation)
@@ -158,11 +140,23 @@ if ($Commands.Zoxide) {
 #--------------------------------------------------------------------------------------------------
 if ($Commands.Docker) {
     Set-Alias d docker
-    function dps { docker ps $args }
-    function di { docker images $args }
-    function dex { docker exec -it $args }
-    function dlogs { docker logs -f $args }
-    function dprune { docker system prune }
+    function dps { docker ps @args }
+    function dpsa { docker ps -a @args }
+    function di { docker images @args }
+    function dex { docker exec -it @args }
+    function dlogs { docker logs -f @args }
+
+    # Docker Compose
+    function dc { docker compose @args }
+    function dcup { docker compose up -d @args }
+    function dcupb { docker compose up -d --build @args }
+    function dcdown { docker compose down @args }
+    function dcdownrm { docker compose down --remove-orphans @args }
+    function dclogs { docker compose logs -f @args }
+
+    # Cleanup
+    function dprune { docker system prune @args }
+    function dprune-all { docker system prune -a @args }
 }
 
 #--------------------------------------------------------------------------------------------------
@@ -197,6 +191,7 @@ function reload-path {
     $userPath = [System.Environment]::GetEnvironmentVariable("Path", "User")
     $env:Path = "$machinePath;$userPath"
 }
+function path { $env:Path -split ';' | Where-Object { $_ } }
 
 #--------------------------------------------------------------------------------------------------
 # Text Search & Processing
@@ -472,7 +467,7 @@ function gcmd {
         Write-Host "Top matching commands for '$Name':"
         foreach ($command in $topMatches) {
             # Check if the Source property exists and is not empty
-            $sourceInfo = if ($command.PSCommandPath -and $command.PSCommandPath -ne "") { "(Source: $($command.Source))" } else { "" }
+            $sourceInfo = if ($command.Source) { "(Source: $($command.Source))" } else { "" }
             Write-Host "- $($command.Name) $sourceInfo"
         }
     } else {
@@ -490,16 +485,18 @@ $startTimeTheme = Get-Date
 # oh-my-posh init pwsh --config "$([Environment]::GetFolderPath('MyDocuments'))\TerminalThemes\oh-my-posh-theme.json" | Invoke-Expression
 
 # Starship - Alternative prompt theme (cached for performance)
-$ENV:STARSHIP_CONFIG = "$([Environment]::GetFolderPath('MyDocuments'))\TerminalThemes\starship-theme.toml"
-$starshipCache = "$env:TEMP\starship-init-$($PSVersionTable.PSVersion.Major).ps1"
-if (-not (Test-Path $starshipCache)) {
-    & starship init powershell | Out-File $starshipCache -Encoding utf8
+if (Get-Command starship -CommandType Application -ErrorAction SilentlyContinue) {
+    $ENV:STARSHIP_CONFIG = "$([Environment]::GetFolderPath('MyDocuments'))\TerminalThemes\starship-theme.toml"
+    $starshipCache = "$env:TEMP\starship-init-$($PSVersionTable.PSVersion.Major).ps1"
+    if (-not (Test-Path $starshipCache)) {
+        & starship init powershell | Out-File $starshipCache -Encoding utf8
+    }
+    . $starshipCache
+    function Invoke-Starship-TransientFunction {
+        & starship module character
+    }
+    Enable-TransientPrompt
 }
-. $starshipCache
-function Invoke-Starship-TransientFunction {
-  &starship module character # Show "λ" for previous commands
-}
-Enable-TransientPrompt  # Simplify previous prompts to save screen space
 
 $endTime = Get-Date
 $totalMs = ($endTime - $startTime).TotalMilliseconds
@@ -511,8 +508,10 @@ $themeDisplay = if ($themeMs -ge 1000) { "{0:F2} s" -f ($themeMs / 1000) } else 
 Write-Host "Terminal startup time: $totalDisplay (Theme: $themeDisplay)"
 
 # Zoxide - Smart directory jumper initialization (cached for performance)
-$zoxideCache = "$env:TEMP\zoxide-init-$($PSVersionTable.PSVersion.Major).ps1"
-if (-not (Test-Path $zoxideCache)) {
-    & zoxide init powershell | Out-File $zoxideCache -Encoding utf8
+if ($Commands.Zoxide) {
+    $zoxideCache = "$env:TEMP\zoxide-init-$($PSVersionTable.PSVersion.Major).ps1"
+    if (-not (Test-Path $zoxideCache)) {
+        & zoxide init powershell | Out-File $zoxideCache -Encoding utf8
+    }
+    . $zoxideCache
 }
-. $zoxideCache

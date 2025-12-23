@@ -57,20 +57,17 @@ $repoPath = Join-Path -Path $documentsPath -ChildPath $repoName
 # Checks if the current execution policy is restrictive and requires adjustment
 function Test-ShouldAdjustExecutionPolicy {
     param (
-        [Parameter(Mandatory=$true)][string]$currentPolicy,
-        [Parameter(Mandatory=$true)][string]$requiredPolicy
+        [Parameter(Mandatory=$true)][string]$currentPolicy
     )
-    # Policies that disallow script execution
     $restrictivePolicies = @('Restricted', 'AllSigned')
-    # Return true only if the current policy is restrictive and does not meet the required policy
-    return $restrictivePolicies -contains $currentPolicy -or $currentPolicy -ne $requiredPolicy
+    return $restrictivePolicies -contains $currentPolicy
 }
 
 # Sets the execution policy to the required level if necessary
 function Set-ExecutionPolicyIfNeeded {
     try {
         $currentPolicy = Get-ExecutionPolicy -Scope CurrentUser
-        if (Test-ShouldAdjustExecutionPolicy -currentPolicy $currentPolicy -requiredPolicy $requiredPolicy) {
+        if (Test-ShouldAdjustExecutionPolicy -currentPolicy $currentPolicy) {
             Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy $requiredPolicy -Force -ErrorAction Stop
             Write-Output "Execution policy set to $requiredPolicy successfully."
         }
@@ -212,7 +209,8 @@ function Invoke-Uninstallation {
     if ($response -in @('y', 'Y')) {
         Write-Output "Uninstalling all listed packages..."
         foreach ($pkg in $installedPackages) {
-            Uninstall-PackageIfInstalled -packageId $pkg
+            Write-Output "Uninstalling $pkg..."
+            winget uninstall --id $pkg -e --accept-source-agreements
         }
     } else {
         foreach ($pkg in $installedPackages) {
