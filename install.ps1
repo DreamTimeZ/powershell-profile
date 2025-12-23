@@ -56,7 +56,7 @@ $profileScope = $profileMap[$Profile]
 $requiredPolicy = "RemoteSigned"
 $repoUrl = "https://github.com/DreamTimeZ/terminal-themes.git"
 $repoName = "TerminalThemes"
-$profileSourcePath = ".\profile.ps1"
+$profileSourcePath = "$PSScriptRoot\profile.ps1"
 $packages = @("junegunn.fzf", "Neovim.Neovim", "ajeetdsouza.zoxide", "JanDeDobbeleer.OhMyPosh", "Starship.Starship", "eza-community.eza")
 $documentsPath = [Environment]::GetFolderPath('MyDocuments')
 $repoPath = Join-Path -Path $documentsPath -ChildPath $repoName
@@ -64,13 +64,10 @@ $repoPath = Join-Path -Path $documentsPath -ChildPath $repoName
 # Tests if the current execution policy is restrictive and requires adjustment to meet the required policy
 function Test-ShouldAdjustExecutionPolicy {
     param (
-        [Parameter(Mandatory = $true)][string]$currentPolicy,
-        [Parameter(Mandatory = $true)][string]$requiredPolicy
+        [Parameter(Mandatory = $true)][string]$currentPolicy
     )
-    # Policies that disallow script execution
     $restrictivePolicies = @('Restricted', 'AllSigned')
-    # Return true only if the current policy is restrictive and does not meet the required policy
-    return $restrictivePolicies -contains $currentPolicy -or $currentPolicy -ne $requiredPolicy
+    return $restrictivePolicies -contains $currentPolicy
 }
 
 # Adjusts the execution policy to the required level if needed
@@ -94,7 +91,7 @@ function Set-ExecutionPolicyIfNeeded {
         }
 
         $currentPolicy = Get-ExecutionPolicy -Scope CurrentUser -ErrorAction Stop
-        if (Test-ShouldAdjustExecutionPolicy -currentPolicy $currentPolicy -requiredPolicy $requiredPolicy) {
+        if (Test-ShouldAdjustExecutionPolicy -currentPolicy $currentPolicy) {
             Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy $requiredPolicy -Force -ErrorAction Stop
             Write-Output "Execution policy set to $requiredPolicy successfully."
         }
@@ -201,7 +198,10 @@ function Write-ProfileFile {
 
     if (-not $isAdmin) {
         Write-Output "Creating symbolic link for $shellName requires administrator privileges. Requesting elevation..."
-        $command = "New-Item -ItemType Directory -Path '$profileDir' -Force; New-Item -ItemType SymbolicLink -Path '$profilePath' -Target '$absoluteSourcePath' -Force"
+        $escapedDir = $profileDir -replace "'", "''"
+        $escapedPath = $profilePath -replace "'", "''"
+        $escapedSource = "$absoluteSourcePath" -replace "'", "''"
+        $command = "New-Item -ItemType Directory -Path '$escapedDir' -Force; New-Item -ItemType SymbolicLink -Path '$escapedPath' -Target '$escapedSource' -Force"
         Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList "-Command", $command -Wait
 
         # Verify the symlink was created
