@@ -81,7 +81,7 @@ if ($Commands.Git) {
 
     # Push/Pull
     function gpl { git pull @args }
-    function gps { git push @args }
+    function gpsh { git push @args }
     function gpsf { git push --force-with-lease }
 
     # Logs & History
