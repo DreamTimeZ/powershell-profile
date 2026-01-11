@@ -10,13 +10,14 @@
 $startTime = Get-Date
 
 # Cache command existence checks for performance (single PATH search)
-$availableCommands = (Get-Command eza, git, zoxide, docker, ollama -ErrorAction SilentlyContinue).Name -replace '\.exe$', ''
+$availableCommands = (Get-Command eza, git, zoxide, docker, ollama, uv -ErrorAction SilentlyContinue).Name -replace '\.exe$', ''
 $Commands = @{
     Eza     = 'eza' -in $availableCommands
     Git     = 'git' -in $availableCommands
     Zoxide  = 'zoxide' -in $availableCommands
     Docker  = 'docker' -in $availableCommands
     Ollama  = 'ollama' -in $availableCommands
+    Uv      = 'uv' -in $availableCommands
 }
 
 #==================================================================================================
@@ -176,6 +177,24 @@ if ($Commands.Ollama) {
             Start-Process -WindowStyle Hidden -FilePath ollama -ArgumentList 'serve'
         }
     }
+}
+
+#--------------------------------------------------------------------------------------------------
+# UV (Python package manager)
+#--------------------------------------------------------------------------------------------------
+if ($Commands.Uv) {
+    # Package Management
+    function uvr { uv run @args }
+    function uvs { uv sync @args }
+    function uva { uv add @args }
+    function uvrm { uv remove @args }
+
+    # Dependency Groups
+    function uvd { uv add --group dev @args }
+    function uvt { uv add --group test @args }
+
+    # Testing
+    function pyt { uv run pytest @args }
 }
 
 #==================================================================================================
