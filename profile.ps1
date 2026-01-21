@@ -4,9 +4,6 @@
 # Description: Custom PowerShell profile with aliases, functions, and tool integrations
 #==================================================================================================
 
-# Clear the console screen
-[System.Console]::Clear()
-
 $startTime = Get-Date
 
 # Cache command existence checks for performance (single PATH search)
