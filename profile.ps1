@@ -205,7 +205,10 @@ if ($Commands.Uv) {
 #--------------------------------------------------------------------------------------------------
 # Profile & Environment Management
 #--------------------------------------------------------------------------------------------------
-function reload { . $PROFILE }
+function reload {
+    Remove-Item "$env:TEMP\starship-init-*.ps1", "$env:TEMP\zoxide-init-*.ps1" -ErrorAction Ignore
+    . $PROFILE
+}
 function reload-path {
     $machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
     $userPath = [System.Environment]::GetEnvironmentVariable("Path", "User")
