@@ -509,13 +509,22 @@ if ($Commands.Starship) {
     $ENV:STARSHIP_CONFIG = "$([Environment]::GetFolderPath('MyDocuments'))\TerminalThemes\starship-theme.toml"
     $starshipCache = "$env:TEMP\starship-init-$($PSVersionTable.PSVersion.Major).ps1"
     if (-not (Test-Path $starshipCache)) {
-        & starship init powershell | Out-File $starshipCache -Encoding utf8
+        & starship init powershell --print-full-init | Out-File $starshipCache -Encoding utf8
     }
     . $starshipCache
     function Invoke-Starship-TransientFunction {
         & starship module character
     }
     Enable-TransientPrompt
+}
+
+# Zoxide - Smart directory jumper initialization (cached for performance)
+if ($Commands.Zoxide) {
+    $zoxideCache = "$env:TEMP\zoxide-init-$($PSVersionTable.PSVersion.Major).ps1"
+    if (-not (Test-Path $zoxideCache)) {
+        & zoxide init powershell | Out-File $zoxideCache -Encoding utf8
+    }
+    . $zoxideCache
 }
 
 $endTime = Get-Date
@@ -526,12 +535,3 @@ $totalDisplay = if ($totalMs -ge 1000) { "{0:F2} s" -f ($totalMs / 1000) } else 
 $themeDisplay = if ($themeMs -ge 1000) { "{0:F2} s" -f ($themeMs / 1000) } else { "{0:F0} ms" -f $themeMs }
 
 Write-Host "Terminal startup time: $totalDisplay (Theme: $themeDisplay)"
-
-# Zoxide - Smart directory jumper initialization (cached for performance)
-if ($Commands.Zoxide) {
-    $zoxideCache = "$env:TEMP\zoxide-init-$($PSVersionTable.PSVersion.Major).ps1"
-    if (-not (Test-Path $zoxideCache)) {
-        & zoxide init powershell | Out-File $zoxideCache -Encoding utf8
-    }
-    . $zoxideCache
-}
