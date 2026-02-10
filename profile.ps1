@@ -4,8 +4,6 @@
 # Description: Custom PowerShell profile with aliases, functions, and tool integrations
 #==================================================================================================
 
-$startTime = Get-Date
-
 # Cache command existence checks for performance (single PATH search)
 $availableCommands = (Get-Command eza, git, zoxide, docker, uv, nvim, starship -CommandType Application -ErrorAction Ignore).Name -replace '\.exe$', ''
 $Commands = @{
@@ -215,6 +213,14 @@ function reload-path {
     $env:Path = "$machinePath;$userPath"
 }
 function path { $env:Path -split ';' | Where-Object { $_ } }
+function bench {
+    if (-not (Get-Command hyperfine -CommandType Application -ErrorAction Ignore)) {
+        Write-Host "hyperfine is not installed. Install with: winget install sharkdp.hyperfine"
+        return
+    }
+    $shell = if ($PSVersionTable.PSVersion.Major -ge 6) { 'pwsh' } else { 'powershell' }
+    hyperfine --warmup 3 -n 'with profile' "$shell -NoLogo -Command exit" -n 'without profile' "$shell -NoProfile -NoLogo -Command exit"
+}
 
 #--------------------------------------------------------------------------------------------------
 # Text Search & Processing
@@ -502,8 +508,6 @@ function gcmd {
 # PROMPT & SHELL INITIALIZATION
 #==================================================================================================
 
-$startTimeTheme = Get-Date
-
 # Oh My Posh - Prompt theme engine
 # oh-my-posh init pwsh --config "$([Environment]::GetFolderPath('MyDocuments'))\TerminalThemes\oh-my-posh-theme.json" | Invoke-Expression
 
@@ -529,12 +533,3 @@ if ($Commands.Zoxide) {
     }
     . $zoxideCache
 }
-
-$endTime = Get-Date
-$totalMs = ($endTime - $startTime).TotalMilliseconds
-$themeMs = ($endTime - $startTimeTheme).TotalMilliseconds
-
-$totalDisplay = if ($totalMs -ge 1000) { "{0:F2} s" -f ($totalMs / 1000) } else { "{0:F0} ms" -f $totalMs }
-$themeDisplay = if ($themeMs -ge 1000) { "{0:F2} s" -f ($themeMs / 1000) } else { "{0:F0} ms" -f $themeMs }
-
-Write-Host "Terminal startup time: $totalDisplay (Theme: $themeDisplay)"
