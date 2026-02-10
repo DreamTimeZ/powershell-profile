@@ -7,13 +7,12 @@
 $startTime = Get-Date
 
 # Cache command existence checks for performance (single PATH search)
-$availableCommands = (Get-Command eza, git, zoxide, docker, ollama, uv, nvim, starship -CommandType Application -ErrorAction Ignore).Name -replace '\.exe$', ''
+$availableCommands = (Get-Command eza, git, zoxide, docker, uv, nvim, starship -CommandType Application -ErrorAction Ignore).Name -replace '\.exe$', ''
 $Commands = @{
     Eza      = 'eza' -in $availableCommands
     Git      = 'git' -in $availableCommands
     Zoxide   = 'zoxide' -in $availableCommands
     Docker   = 'docker' -in $availableCommands
-    Ollama   = 'ollama' -in $availableCommands
     Uv       = 'uv' -in $availableCommands
     Nvim     = 'nvim' -in $availableCommands
     Starship = 'starship' -in $availableCommands
@@ -170,11 +169,14 @@ function dockerd { & "$env:programfiles\Docker\Docker\Docker Desktop.exe" $args}
 #--------------------------------------------------------------------------------------------------
 # OLLAMA (Local LLM management)
 #--------------------------------------------------------------------------------------------------
-if ($Commands.Ollama) {
-    function ollama-up {
-        if (-not (Get-Process ollama -ErrorAction SilentlyContinue)) {
-            Start-Process -WindowStyle Hidden -FilePath ollama -ArgumentList 'serve'
-        }
+# Lazy-checked: ollama not in startup batch to avoid PATH scan penalty
+function ollama-up {
+    if (-not (Get-Command ollama -CommandType Application -ErrorAction Ignore)) {
+        Write-Host "ollama is not installed."
+        return
+    }
+    if (-not (Get-Process ollama -ErrorAction SilentlyContinue)) {
+        Start-Process -WindowStyle Hidden -FilePath ollama -ArgumentList 'serve'
     }
 }
 
