@@ -61,7 +61,7 @@ if ($Commands.Git) {
     function grmc { git rm --cached @args }
 
     # Repository Management
-    function gi { git init @args }
+    function gin { git init @args }
     function gcl { git clone @args }
     function grao { git remote add origin @args }
 
@@ -74,7 +74,7 @@ if ($Commands.Git) {
     function gbrd { git push origin --delete @args }
 
     # Commits
-    function gc { git commit @args }
+    function gct { git commit @args }
     function gcmsg { git commit -m @args }
     function gca { git commit --amend @args }
     function gundo { git reset --soft HEAD~1 }
@@ -100,7 +100,7 @@ if ($Commands.Git) {
     function grs { git restore --staged @args }
 
     # Advanced Operations
-    function gm { git merge @args }
+    function gmr { git merge @args }
     function gcp { git cherry-pick @args }
     function grb { git rebase @args }
     function grbi { git rebase -i @args }
