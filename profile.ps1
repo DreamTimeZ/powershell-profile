@@ -7,14 +7,16 @@
 $startTime = Get-Date
 
 # Cache command existence checks for performance (single PATH search)
-$availableCommands = (Get-Command eza, git, zoxide, docker, ollama, uv -ErrorAction SilentlyContinue).Name -replace '\.exe$', ''
+$availableCommands = (Get-Command eza, git, zoxide, docker, ollama, uv, nvim, starship -CommandType Application -ErrorAction Ignore).Name -replace '\.exe$', ''
 $Commands = @{
-    Eza     = 'eza' -in $availableCommands
-    Git     = 'git' -in $availableCommands
-    Zoxide  = 'zoxide' -in $availableCommands
-    Docker  = 'docker' -in $availableCommands
-    Ollama  = 'ollama' -in $availableCommands
-    Uv      = 'uv' -in $availableCommands
+    Eza      = 'eza' -in $availableCommands
+    Git      = 'git' -in $availableCommands
+    Zoxide   = 'zoxide' -in $availableCommands
+    Docker   = 'docker' -in $availableCommands
+    Ollama   = 'ollama' -in $availableCommands
+    Uv       = 'uv' -in $availableCommands
+    Nvim     = 'nvim' -in $availableCommands
+    Starship = 'starship' -in $availableCommands
 }
 
 #==================================================================================================
@@ -24,8 +26,8 @@ $Commands = @{
 # Remove conflicting aliases and set custom ones
 Remove-Item -Path Alias:ls -ErrorAction Ignore
 
-if ($nvim = Get-Command nvim -CommandType Application -ErrorAction SilentlyContinue) {
-    Set-Alias -Name vi -Value $nvim.Source
+if ($Commands.Nvim) {
+    Set-Alias -Name vi -Value nvim
 }
 Set-Alias -Name touch -Value New-Item
 Set-Alias -Name pbcopy -Value Set-Clipboard
@@ -501,7 +503,7 @@ $startTimeTheme = Get-Date
 # oh-my-posh init pwsh --config "$([Environment]::GetFolderPath('MyDocuments'))\TerminalThemes\oh-my-posh-theme.json" | Invoke-Expression
 
 # Starship - Alternative prompt theme (cached for performance)
-if (Get-Command starship -CommandType Application -ErrorAction SilentlyContinue) {
+if ($Commands.Starship) {
     $ENV:STARSHIP_CONFIG = "$([Environment]::GetFolderPath('MyDocuments'))\TerminalThemes\starship-theme.toml"
     $starshipCache = "$env:TEMP\starship-init-$($PSVersionTable.PSVersion.Major).ps1"
     if (-not (Test-Path $starshipCache)) {
