@@ -652,3 +652,8 @@ if ($Commands.Zoxide) {
     }
     . $zoxideCache
 }
+
+# Machine-local overrides — per-machine tweaks live here, keeping this file identical to origin.
+# Lives next to $PROFILE (outside the repo), so it is never committed; gitignored as a safety net.
+$localProfile = Join-Path -Path $PSScriptRoot -ChildPath 'profile.local.ps1'
+if (Test-Path -Path $localProfile) { . $localProfile }
