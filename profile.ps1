@@ -202,6 +202,91 @@ if ($Commands.Uv) {
     function pyt { uv run pytest @args }
 }
 
+#--------------------------------------------------------------------------------------------------
+# AI CODING AGENTS (Claude Code & Codex)
+#--------------------------------------------------------------------------------------------------
+# Model + effort scheme. Naming: the bare alias is that model's daily default; suffixes
+# -h/-x/-m = effort high/xhigh/max, -u = ultracode, -z = zero-context.
+# Every alias pins --model explicitly so the settings.json default model never leaks in.
+if ($Commands.Claude) {
+    Set-Alias -Name c -Value claude
+
+    # Opus (daily driver)
+    function cy  { claude --model opus --effort xhigh @args }   # bare = Opus daily default
+    function cyh { claude --model opus --effort high @args }
+    function cyx { claude --model opus --effort xhigh @args }
+    function cym { claude --model opus --effort max @args }     # --effort is the only way to start at max
+    function cyu { claude --model opus --settings '{"ultracode":true}' @args }   # no --effort: max disables ultracode
+
+    # Sonnet (fast, quality-balanced)
+    function cf  { claude --model sonnet --effort high @args }  # bare = Sonnet daily default
+    function cfh { claude --model sonnet --effort high @args }
+    function cfx { claude --model sonnet --effort xhigh @args }
+    function cfm { claude --model sonnet --effort max @args }
+    function cfu { claude --model sonnet --settings '{"ultracode":true}' @args }
+
+    # Haiku (cheap, trivial tasks)
+    function ch  { claude --model haiku --effort medium @args } # bare = Haiku daily default
+    function chh { claude --model haiku --effort high @args }
+    function chx { claude --model haiku --effort xhigh @args }
+    function chm { claude --model haiku --effort max @args }
+    function chu { claude --model haiku --settings '{"ultracode":true}' @args }
+
+    # Fable 5
+    function cb  { claude --model fable @args }                 # bare = Fable default (inherits settings.json effort)
+    function cbh { claude --model fable --effort high @args }
+    function cbx { claude --model fable --effort xhigh @args }
+    function cbm { claude --model fable --effort max @args }
+    function cbu { claude --model fable --settings '{"ultracode":true}' @args }
+
+    # Name-by-model helpers (complement the letter scheme)
+    function claudeh { claude --model haiku @args }
+    function claudes { claude --model sonnet @args }
+    function claudeo { claude --model opus @args }
+    function claudep { claude -p @args }
+    function cbare   { claude --bare @args }
+
+    # Tool-restricted variants
+    function claudew { claude --allowedTools "WebFetch,WebSearch" @args }
+    function claudef { claude --allowedTools "Glob,Grep,Read" @args }
+    function claudet { claude --allowedTools "Edit,Write,Bash,WebFetch,WebSearch" @args }
+
+    # Zero-context (-z): --safe-mode disables all config. Auto-memory is disabled for the call only
+    # (set-then-restore around the invocation, since PowerShell has no inline env-var prefix).
+    function Invoke-ClaudeSafe {
+        $previousDisableAutoMemory = $env:CLAUDE_CODE_DISABLE_AUTO_MEMORY
+        $env:CLAUDE_CODE_DISABLE_AUTO_MEMORY = '1'
+        try {
+            claude @args
+        } finally {
+            if ($null -eq $previousDisableAutoMemory) {
+                Remove-Item -Path Env:CLAUDE_CODE_DISABLE_AUTO_MEMORY -ErrorAction Ignore
+            } else {
+                $env:CLAUDE_CODE_DISABLE_AUTO_MEMORY = $previousDisableAutoMemory
+            }
+        }
+    }
+    function cyz  { Invoke-ClaudeSafe --safe-mode --model opus   --effort xhigh  --dangerously-skip-permissions @args }
+    function cfz  { Invoke-ClaudeSafe --safe-mode --model sonnet --effort xhigh  --dangerously-skip-permissions @args }
+    function chz  { Invoke-ClaudeSafe --safe-mode --model haiku  --effort medium --dangerously-skip-permissions @args }
+    function cbz  { Invoke-ClaudeSafe --safe-mode --model fable  --effort xhigh  --dangerously-skip-permissions @args }
+    function chlz { Invoke-ClaudeSafe --safe-mode --model haiku  --effort low    --dangerously-skip-permissions @args }
+    function cfmz { Invoke-ClaudeSafe --safe-mode --model sonnet --effort medium --dangerously-skip-permissions @args }
+}
+
+if ($Commands.Codex) {
+    # Bare alias tracks Codex's recommended default model + reasoning; suffixes pin the reasoning effort.
+    # Values are unquoted: the Windows codex.cmd shim forwards args through cmd.exe (%*), which strips
+    # inner quotes anyway, and Codex parses bare values as strings (see its -c help example
+    # 'shell_environment_policy.inherit=all'), so the unquoted form is the robust one here.
+    function cdx  { codex @args }
+    function cdxh { codex -c model_reasoning_effort=high @args }
+    function cdxx { codex -c model_reasoning_effort=xhigh @args }
+    function cdxm { codex -c model_reasoning_effort=medium @args }
+    function cdxl { codex -c model_reasoning_effort=low @args }
+    function cdx0 { codex -c model_reasoning_effort=minimal @args }
+}
+
 #==================================================================================================
 # UTILITY FUNCTIONS
 #==================================================================================================
