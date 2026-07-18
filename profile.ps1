@@ -5,7 +5,8 @@
 #==================================================================================================
 
 # Cache command existence checks for performance (single PATH search)
-$availableCommands = (Get-Command eza, git, zoxide, docker, uv, nvim, starship -CommandType Application -ErrorAction Ignore).Name -replace '\.exe$', ''
+# Strip the launcher extension so npm/.cmd shims (e.g. codex.cmd) match their bare name too.
+$availableCommands = (Get-Command eza, git, zoxide, docker, uv, nvim, starship, claude, codex, kubectl, lazygit, gitleaks -CommandType Application -ErrorAction Ignore).Name -replace '\.(exe|cmd|bat|ps1)$', ''
 $Commands = @{
     Eza      = 'eza' -in $availableCommands
     Git      = 'git' -in $availableCommands
@@ -14,6 +15,11 @@ $Commands = @{
     Uv       = 'uv' -in $availableCommands
     Nvim     = 'nvim' -in $availableCommands
     Starship = 'starship' -in $availableCommands
+    Claude   = 'claude' -in $availableCommands
+    Codex    = 'codex' -in $availableCommands
+    Kubectl  = 'kubectl' -in $availableCommands
+    Lazygit  = 'lazygit' -in $availableCommands
+    Gitleaks = 'gitleaks' -in $availableCommands
 }
 
 #==================================================================================================
