@@ -440,6 +440,125 @@ function update {
     }
 }
 
+# Update PowerShell itself to the latest stable release using the official signed MSI from GitHub.
+# Complements 'update' (winget) for machines where PowerShell was not installed through winget.
+function Update-PowerShell {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param()
+
+    # Windows PowerShell 5.1 is always on Windows, so only pwsh (6+) needs the platform guard.
+    if ($PSVersionTable.PSVersion.Major -ge 6 -and -not $IsWindows) {
+        Write-Warning 'Update-PowerShell is only supported on Windows.'
+        return
+    }
+
+    $releasesApiUri = 'https://api.github.com/repos/PowerShell/PowerShell/releases/latest'
+    $apiHeaders = @{
+        'Accept'               = 'application/vnd.github+json'
+        'X-GitHub-Api-Version' = '2022-11-28'
+    }
+
+    # Windows PowerShell 5.1 may negotiate TLS 1.0 by default, which GitHub refuses.
+    if ($PSVersionTable.PSVersion.Major -lt 6) {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    }
+
+    try {
+        # The /releases/latest endpoint already excludes drafts and pre-releases.
+        $release = Invoke-RestMethod -Uri $releasesApiUri -Headers $apiHeaders -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to query the latest PowerShell release: $($_.Exception.Message)"
+        return
+    }
+
+    # Drop the leading 'v' from the tag and any pre-release suffix from the running version before comparing.
+    $latestVersion = [version]($release.tag_name -replace '^v', '')
+    $currentVersion = [version](($PSVersionTable.PSVersion.ToString() -split '-')[0])
+
+    if ($latestVersion -le $currentVersion) {
+        Write-Host "PowerShell is already up to date (v$currentVersion)."
+        return
+    }
+
+    # Select the installer that matches the host architecture instead of assuming x64.
+    $architecture = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()) {
+        'X64'   { 'x64' }
+        'Arm64' { 'arm64' }
+        'X86'   { 'x86' }
+        default {
+            Write-Error "Unsupported architecture: $_"
+            return
+        }
+    }
+
+    $assetName = "PowerShell-$latestVersion-win-$architecture.msi"
+    $asset = $release.assets | Where-Object { $_.name -eq $assetName } | Select-Object -First 1
+    if (-not $asset) {
+        Write-Error "No installer named '$assetName' was found in release v$latestVersion."
+        return
+    }
+
+    if (-not $PSCmdlet.ShouldProcess("PowerShell v$latestVersion", 'Download and install')) {
+        return
+    }
+
+    $installerPath = Join-Path -Path $env:TEMP -ChildPath $assetName
+    try {
+        Write-Host "Downloading PowerShell v$latestVersion ($architecture)..."
+        # Suppressing the progress stream avoids a large Invoke-WebRequest slowdown on Windows PowerShell 5.1.
+        $previousProgress = $ProgressPreference
+        $ProgressPreference = 'SilentlyContinue'
+        try {
+            Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $installerPath -ErrorAction Stop
+        } catch {
+            Write-Error "Failed to download the installer: $($_.Exception.Message)"
+            return
+        } finally {
+            $ProgressPreference = $previousProgress
+        }
+
+        # Verify the MSI carries a valid Authenticode signature from Microsoft before running it elevated.
+        $signature = Get-AuthenticodeSignature -FilePath $installerPath
+        if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Microsoft Corporation') {
+            Write-Error "The downloaded installer failed signature validation (status: $($signature.Status)). Aborting."
+            return
+        }
+
+        $msiArguments = @(
+            '/package', "`"$installerPath`""
+            '/passive', '/norestart'
+            'ADD_PATH=1'
+            'DISABLE_TELEMETRY=1'
+            'USE_MU=1'
+            'ENABLE_MU=1'
+        )
+
+        Write-Host "Installing PowerShell v$latestVersion (administrator approval required)..."
+        try {
+            $installer = Start-Process -FilePath 'msiexec.exe' -ArgumentList $msiArguments -Verb RunAs -Wait -PassThru -ErrorAction Stop
+        } catch {
+            Write-Error "Failed to launch the installer (elevation may have been declined): $($_.Exception.Message)"
+            return
+        }
+
+        # Standard msiexec exit codes.
+        $exitCode = $installer.ExitCode
+        if ($null -eq $exitCode) {
+            Write-Warning 'The installer did not report an exit code. Verify the PowerShell version manually.'
+        } else {
+            switch ($exitCode) {
+                0       { Write-Host "PowerShell v$latestVersion installed. Restart your shell to use the new version." }
+                3010    { Write-Host "PowerShell v$latestVersion installed. A reboot is required to complete the update." }
+                1602    { Write-Warning 'Installation was cancelled.' }
+                1618    { Write-Warning 'Another installation is already in progress. Try again later.' }
+                default { Write-Error "Installation failed with msiexec exit code $exitCode." }
+            }
+        }
+    } finally {
+        Remove-Item -Path $installerPath -Force -ErrorAction Ignore
+    }
+}
+
 #--------------------------------------------------------------------------------------------------
 # System Information
 #--------------------------------------------------------------------------------------------------
