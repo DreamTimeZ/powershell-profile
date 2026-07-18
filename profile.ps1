@@ -31,6 +31,7 @@ Remove-Item -Path Alias:ls -ErrorAction Ignore
 
 if ($Commands.Nvim) {
     Set-Alias -Name vi -Value nvim
+    Set-Alias -Name vim -Value nvim
 }
 Set-Alias -Name touch -Value New-Item
 Set-Alias -Name pbcopy -Value Set-Clipboard
@@ -117,6 +118,13 @@ if ($Commands.Git) {
 }
 
 #--------------------------------------------------------------------------------------------------
+# LAZYGIT (Terminal UI for git)
+#--------------------------------------------------------------------------------------------------
+if ($Commands.Lazygit) {
+    Set-Alias -Name lg -Value lazygit
+}
+
+#--------------------------------------------------------------------------------------------------
 # NAVIGATION SHORTCUTS
 #--------------------------------------------------------------------------------------------------
 function .. { Set-Location .. }
@@ -160,6 +168,20 @@ if ($Commands.Docker) {
     # Cleanup
     function dprune { docker system prune @args }
     function dprune-all { docker system prune -a @args }
+}
+
+#--------------------------------------------------------------------------------------------------
+# KUBERNETES
+#--------------------------------------------------------------------------------------------------
+if ($Commands.Kubectl) {
+    Set-Alias -Name k -Value kubectl
+    function kgp { kubectl get pods @args }
+    function kgs { kubectl get services @args }
+    function kgn { kubectl get nodes @args }
+    function kgd { kubectl get deployments @args }
+    function kdesc { kubectl describe @args }
+    function klogs { kubectl logs -f @args }
+    function kexec { kubectl exec -it @args }
 }
 
 #--------------------------------------------------------------------------------------------------
@@ -285,6 +307,14 @@ if ($Commands.Codex) {
     function cdxm { codex -c model_reasoning_effort=medium @args }
     function cdxl { codex -c model_reasoning_effort=low @args }
     function cdx0 { codex -c model_reasoning_effort=minimal @args }
+}
+
+#--------------------------------------------------------------------------------------------------
+# GITLEAKS (Secret scanning)
+#--------------------------------------------------------------------------------------------------
+if ($Commands.Gitleaks) {
+    function gleak { gitleaks detect --verbose @args }
+    function gleaks { gitleaks protect --staged --verbose @args }
 }
 
 #==================================================================================================
