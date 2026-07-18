@@ -128,7 +128,7 @@ function Install-PackageIfNeeded {
     }
 }
 
-# Clones a Git repository to the specified destination if it does not already exist
+# Clones a Git repository if missing, or fast-forward updates it if already present
 function Copy-GitRepositoryIfNeeded {
     param (
         [Parameter(Mandatory = $true)][string]$repoUrl,
@@ -144,6 +144,16 @@ function Copy-GitRepositoryIfNeeded {
             }
         } catch {
             Write-Error "Error cloning repository: ${_}"
+        }
+    } else {
+        Write-Output "Updating terminal themes..."
+        try {
+            git -C $destinationPath pull --ff-only
+            if ($LastExitCode -ne 0) {
+                throw "Failed to update repository at $destinationPath"
+            }
+        } catch {
+            Write-Error "Error updating repository: ${_}"
         }
     }
 }
