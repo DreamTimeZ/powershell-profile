@@ -30,7 +30,7 @@ Customized PowerShell profile with enhanced productivity features, modern tools 
 - **Navigation**: `..`, `...`, `....` for quick directory traversal
 - **System Management**: `poweroff`, `reboot`, `pkill`
 - **Network**: `IPv4`, `IPv6` - Get local/public IPs or domain resolution
-- **Package Management**: `update` - Bulk update via winget
+- **Package Management**: `update` - Bulk update via winget; `Update-PowerShell` - Update PowerShell to the latest stable release
 - **Utilities**: `grep`, `uptime`, `hist`, `gcmd`, `reload`
 
 ### Application Launchers
@@ -110,6 +110,7 @@ IPv4                  # Show local & public IPv4
 IPv6                  # Show local & public IPv6
 IPv4 -d google.com    # Resolve domain to IPv4
 update                # Update all winget packages
+Update-PowerShell     # Update PowerShell to the latest stable release
 uptime                # System uptime
 pkill processname     # Kill process by name
 poweroff              # Shutdown
