@@ -16,6 +16,9 @@
     - pwsh: PowerShell 7+ (Documents\PowerShell)
     - both: Install to both shells
 
+.PARAMETER Force
+    Skip the "overwrite?" prompt for an existing profile (non-interactive install).
+
 .EXAMPLE
     .\install.ps1
     .\install.ps1 -Profile all-hosts -Shell both
@@ -27,7 +30,9 @@ param(
     [string]$Profile = 'current',
 
     [ValidateSet('current', 'windows', 'pwsh', 'both')]
-    [string]$Shell = 'current'
+    [string]$Shell = 'current',
+
+    [switch]$Force
 )
 
 # Detect current shell
@@ -197,7 +202,8 @@ function Write-ProfileFile {
     param (
         [Parameter(Mandatory = $true)][string]$sourcePath,
         [Parameter(Mandatory = $true)][string]$profilePath,
-        [Parameter(Mandatory = $true)][string]$shellName
+        [Parameter(Mandatory = $true)][string]$shellName,
+        [bool]$Force = $false
     )
 
     $profileDir = [System.IO.Path]::GetDirectoryName($profilePath)
@@ -236,10 +242,12 @@ function Write-ProfileFile {
     $profileExists = Test-Path -Path $profilePath
 
     if ($profileExists) {
-        $response = Read-Host "[$shellName] Profile already exists at $profilePath. Overwrite? (y/n)"
-        if ($response -notin @('y', 'Y')) {
-            Write-Output "[$shellName] Skipping profile setup as per user request."
-            return
+        if (-not $Force) {
+            $response = Read-Host "[$shellName] Profile already exists at $profilePath. Overwrite? (y/n)"
+            if ($response -notin @('y', 'Y')) {
+                Write-Output "[$shellName] Skipping profile setup as per user request."
+                return
+            }
         }
         # Remove existing file/symlink before creating new one
         Remove-Item -Path $profilePath -Force
@@ -283,7 +291,7 @@ try {
         $targetProfilePath = Get-ProfilePath -shell $targetShell -scope $profileScope
         $shellDisplayName = if ($targetShell -eq 'pwsh') { 'PowerShell 7+' } else { 'Windows PowerShell' }
 
-        Write-ProfileFile -sourcePath $profileSourcePath -profilePath $targetProfilePath -shellName $shellDisplayName
+        Write-ProfileFile -sourcePath $profileSourcePath -profilePath $targetProfilePath -shellName $shellDisplayName -Force $Force
     }
 
     Write-Output "`nInstallation complete."
